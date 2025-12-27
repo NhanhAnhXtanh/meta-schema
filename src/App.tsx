@@ -149,6 +149,23 @@ function App() {
     []
   );
 
+  const onEdgeUpdate = useCallback((oldEdge: Edge<RelationshipEdgeData>, newConnection: Connection) => {
+    setEdges((eds) =>
+      eds.map((edge) => {
+        if (edge.id === oldEdge.id) {
+          return {
+            ...edge,
+            source: newConnection.source!,
+            target: newConnection.target!,
+            sourceHandle: newConnection.sourceHandle,
+            targetHandle: newConnection.targetHandle,
+          };
+        }
+        return edge;
+      })
+    );
+  }, []);
+
   const isValidConnection = useCallback((connection: Connection) => {
     // Cho phép kết nối giữa mọi handle, chỉ cần khác node
     return connection.source !== connection.target;
@@ -473,8 +490,10 @@ function App() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onEdgeUpdate={onEdgeUpdate}
             onInit={onInit}
             isValidConnection={isValidConnection}
+            edgesUpdatable={true}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             fitView
@@ -484,8 +503,9 @@ function App() {
               type: 'relationship',
               animated: false,
             }}
-            connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}
+            connectionLineStyle={{ stroke: '#9ca3af', strokeWidth: 2 }}
             connectionLineType="smoothstep"
+            connectionRadius={20}
             snapToGrid={false}
             deleteKeyCode={null}
           >

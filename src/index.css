@@ -66,6 +66,11 @@
   z-index: 10 !important;
 }
 
+/* React Flow Edge Styles - Tăng khả năng click */
+.react-flow__edge-path {
+  pointer-events: stroke !important;
+}
+
 .react-flow__handle:hover {
   /* Không phóng to, chỉ đổi màu xanh */
   z-index: 20 !important;
