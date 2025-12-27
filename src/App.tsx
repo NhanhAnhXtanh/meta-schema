@@ -25,10 +25,16 @@ import {
 } from './components/ui/dialog';
 import { TableNode, TableNodeData } from './components/TableNode';
 import { TableSidebar } from './components/TableSidebar';
+import { RelationshipEdge, RelationshipEdgeData } from './components/RelationshipEdge';
 import { Plus, Trash2 } from 'lucide-react';
+import { EdgeTypes } from '@xyflow/react';
 
 const nodeTypes: NodeTypes = {
   table: TableNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  relationship: RelationshipEdge,
 };
 
 const COLOR_OPTIONS = [
@@ -91,14 +97,17 @@ const initialNodes: Node<TableNodeData>[] = [
   },
 ];
 
-const initialEdges: Edge[] = [
+const initialEdges: Edge<RelationshipEdgeData>[] = [
   {
     id: 'products-warehouses',
     source: '1',
     target: '2',
     sourceHandle: 'warehouse_id',
     targetHandle: 'id',
-    type: 'smoothstep',
+    type: 'relationship',
+    data: {
+      relationshipType: 'n-1',
+    },
   },
   {
     id: 'products-suppliers',
@@ -106,13 +115,16 @@ const initialEdges: Edge[] = [
     target: '3',
     sourceHandle: 'supplier_id',
     targetHandle: 'id',
-    type: 'smoothstep',
+    type: 'relationship',
+    data: {
+      relationshipType: 'n-1',
+    },
   },
 ];
 
 function App() {
   const [nodes, setNodes] = useState<Node<TableNodeData>[]>(initialNodes);
-  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  const [edges, setEdges] = useState<Edge<RelationshipEdgeData>[]>(initialEdges);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [tableName, setTableName] = useState('');
   const [columns, setColumns] = useState<Array<{ name: string; type: string; isPrimaryKey?: boolean; isForeignKey?: boolean }>>([
@@ -149,13 +161,16 @@ function App() {
       if (params.source && params.target && params.sourceHandle && params.targetHandle) {
         // Tạo ID duy nhất cho edge dựa trên source, target và handles
         const edgeId = `${params.source}-${params.sourceHandle}-to-${params.target}-${params.targetHandle}`;
-        const newEdge: Edge = {
+        const newEdge: Edge<RelationshipEdgeData> = {
           id: edgeId,
           source: params.source,
           target: params.target,
           sourceHandle: params.sourceHandle,
           targetHandle: params.targetHandle,
-          type: 'smoothstep',
+          type: 'relationship',
+          data: {
+            relationshipType: '1-n',
+          },
         };
         setEdges((eds) => {
           // Kiểm tra xem edge đã tồn tại chưa
@@ -281,6 +296,52 @@ function App() {
     setNodes(newOrder);
   }, []);
 
+  const handleFieldReorder = useCallback((nodeId: string, oldIndex: number, newIndex: number) => {
+    // Khi field được sắp xếp lại, cập nhật edges để trỏ đúng vào field mới
+    setEdges((eds) =>
+      eds.map((edge) => {
+        if (edge.source === nodeId) {
+          const sourceNode = nodes.find((n) => n.id === nodeId);
+          if (sourceNode) {
+            const oldField = sourceNode.data.columns[oldIndex];
+            const newField = sourceNode.data.columns[newIndex];
+            // Nếu edge đang trỏ vào field cũ, cập nhật sang field mới
+            if (edge.sourceHandle === oldField?.name) {
+              return { ...edge, sourceHandle: newField?.name };
+            }
+          }
+        }
+        if (edge.target === nodeId) {
+          const targetNode = nodes.find((n) => n.id === nodeId);
+          if (targetNode) {
+            const oldField = targetNode.data.columns[oldIndex];
+            const newField = targetNode.data.columns[newIndex];
+            // Nếu edge đang trỏ vào field cũ, cập nhật sang field mới
+            if (edge.targetHandle === oldField?.name) {
+              return { ...edge, targetHandle: newField?.name };
+            }
+          }
+        }
+        return edge;
+      })
+    );
+  }, [nodes]);
+
+  const handleFieldRename = useCallback((nodeId: string, fieldIndex: number, oldName: string, newName: string) => {
+    // Khi field được đổi tên, cập nhật edges để trỏ đúng vào tên mới
+    setEdges((eds) =>
+      eds.map((edge) => {
+        if (edge.source === nodeId && edge.sourceHandle === oldName) {
+          return { ...edge, sourceHandle: newName };
+        }
+        if (edge.target === nodeId && edge.targetHandle === oldName) {
+          return { ...edge, targetHandle: newName };
+        }
+        return edge;
+      })
+    );
+  }, []);
+
   return (
     <div className="w-screen h-screen flex">
       {/* Sidebar */}
@@ -294,6 +355,8 @@ function App() {
         tableColors={tableColors}
         onColorChange={handleColorChange}
         onNodesReorder={handleNodesReorder}
+        onFieldReorder={handleFieldReorder}
+        onFieldRename={handleFieldRename}
       />
 
       {/* Main Content */}
@@ -413,11 +476,12 @@ function App() {
             onInit={onInit}
             isValidConnection={isValidConnection}
             nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             fitView
             className="bg-gray-50"
             connectionMode="loose"
             defaultEdgeOptions={{
-              type: 'smoothstep',
+              type: 'relationship',
               animated: false,
             }}
             connectionLineStyle={{ stroke: '#3b82f6', strokeWidth: 2 }}

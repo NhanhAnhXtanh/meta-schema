@@ -3,7 +3,7 @@ import { Node } from '@xyflow/react';
 import { TableNodeData } from './TableNode';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Plus, Search, ChevronDown, ChevronRight, GripVertical, MoreVertical, Edit2, Trash2, Palette, Key, Check } from 'lucide-react';
+import { Plus, Search, ChevronDown, ChevronRight, GripVertical, Palette, Key, Check, Link2, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -23,6 +23,8 @@ interface TableSidebarProps {
   tableColors: Record<string, string>;
   onColorChange: (nodeId: string, color: string) => void;
   onNodesReorder: (newOrder: Node<TableNodeData>[]) => void;
+  onFieldReorder: (nodeId: string, oldIndex: number, newIndex: number) => void;
+  onFieldRename: (nodeId: string, fieldIndex: number, oldName: string, newName: string) => void;
 }
 
 const COLOR_OPTIONS = [
@@ -67,6 +69,8 @@ export function TableSidebar({
   tableColors,
   onColorChange,
   onNodesReorder,
+  onFieldReorder,
+  onFieldRename,
 }: TableSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -77,9 +81,6 @@ export function TableSidebar({
   const [colorDialogNodeId, setColorDialogNodeId] = useState<string | null>(null);
   const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
   const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null);
-  const [editingField, setEditingField] = useState<{ nodeId: string; fieldIndex: number } | null>(null);
-  const [editingFieldName, setEditingFieldName] = useState('');
-  const [editingFieldType, setEditingFieldType] = useState('');
   const [typeDropdownOpen, setTypeDropdownOpen] = useState<{ nodeId: string; fieldIndex: number } | null>(null);
   const [typeSearchQuery, setTypeSearchQuery] = useState('');
   const [draggedField, setDraggedField] = useState<{ nodeId: string; fieldIndex: number } | null>(null);
@@ -158,32 +159,6 @@ export function TableSidebar({
     onNodeUpdate(nodeId, { columns: newColumns });
   };
 
-  const startEditField = (nodeId: string, fieldIndex: number) => {
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return;
-    const field = node.data.columns[fieldIndex];
-    setEditingField({ nodeId, fieldIndex });
-    setEditingFieldName(field.name);
-    setEditingFieldType(field.type);
-  };
-
-  const saveEditField = () => {
-    if (!editingField) return;
-    handleFieldUpdate(editingField.nodeId, editingField.fieldIndex, {
-      name: editingFieldName,
-      type: editingFieldType,
-    });
-    setEditingField(null);
-    setEditingFieldName('');
-    setEditingFieldType('');
-  };
-
-  const cancelEditField = () => {
-    setEditingField(null);
-    setEditingFieldName('');
-    setEditingFieldType('');
-  };
-
   const handleAddField = (nodeId: string) => {
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
@@ -192,19 +167,10 @@ export function TableSidebar({
       { name: '', type: 'varchar', visible: true },
     ];
     onNodeUpdate(nodeId, { columns: newColumns });
-    // Tự động expand và edit field mới
+    // Tự động expand
     setExpandedNodes((prev) => new Set(prev).add(nodeId));
-    setEditingField({ nodeId, fieldIndex: newColumns.length - 1 });
-    setEditingFieldName('');
-    setEditingFieldType('varchar');
   };
 
-  const handleDeleteField = (nodeId: string, fieldIndex: number) => {
-    const node = nodes.find(n => n.id === nodeId);
-    if (!node) return;
-    const newColumns = node.data.columns.filter((_: TableNodeData['columns'][0], idx: number) => idx !== fieldIndex);
-    onNodeUpdate(nodeId, { columns: newColumns });
-  };
 
   const handleFieldDragStart = (e: React.DragEvent, nodeId: string, fieldIndex: number) => {
     setDraggedField({ nodeId, fieldIndex });
@@ -231,14 +197,22 @@ export function TableSidebar({
       return;
     }
 
+    const oldIndex = draggedField.fieldIndex;
+    if (oldIndex === targetFieldIndex) {
+      setDraggedField(null);
+      setDragOverFieldIndex(null);
+      return;
+    }
+
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
     const newColumns = [...node.data.columns];
-    const [removed] = newColumns.splice(draggedField.fieldIndex, 1);
+    const [removed] = newColumns.splice(oldIndex, 1);
     newColumns.splice(targetFieldIndex, 0, removed);
 
     onNodeUpdate(nodeId, { columns: newColumns });
+    onFieldReorder(nodeId, oldIndex, targetFieldIndex);
     setDraggedField(null);
     setDragOverFieldIndex(null);
   };
@@ -453,7 +427,6 @@ export function TableSidebar({
                     <div className="pl-4 pr-4 pb-3 space-y-2 border-t border-gray-800 pt-2 mt-2">
                       <div className="text-xs font-semibold text-gray-400 mb-2 px-2">Trường</div>
                       {node.data.columns.map((column: TableNodeData['columns'][0], idx: number) => {
-                        const isEditing = editingField?.nodeId === node.id && editingField?.fieldIndex === idx;
                         const isTypeDropdownOpen = typeDropdownOpen?.nodeId === node.id && typeDropdownOpen?.fieldIndex === idx;
                         const isDragging = draggedField?.nodeId === node.id && draggedField?.fieldIndex === idx;
                         const isDragOver = dragOverFieldIndex === idx && draggedField?.nodeId === node.id;
@@ -483,100 +456,75 @@ export function TableSidebar({
                               className="w-4 h-4 cursor-pointer"
                             />
                             
-                            {/* Field name */}
+                            {/* Field name - editable directly */}
                             <div className="flex-1 min-w-0">
-                              {isEditing ? (
-                                <Input
-                                  value={editingFieldName}
-                                  onChange={(e) => setEditingFieldName(e.target.value)}
-                                  onBlur={saveEditField}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEditField();
-                                    if (e.key === 'Escape') cancelEditField();
-                                  }}
-                                  autoFocus
-                                  placeholder="Tên field"
-                                  className="h-7 text-xs bg-gray-700 border-gray-600 text-white"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              ) : (
-                                <span 
-                                  className={cn(
-                                    "text-xs font-mono text-gray-300 cursor-pointer hover:text-white block",
-                                    column.visible === false && "line-through text-gray-600"
-                                  )}
-                                  onDoubleClick={() => startEditField(node.id, idx)}
-                                >
-                                  {column.name || '(chưa có tên)'}
-                                </span>
-                              )}
+                              <Input
+                                value={column.name || ''}
+                                onChange={(e) => {
+                                  const oldName = column.name;
+                                  const newName = e.target.value;
+                                  handleFieldUpdate(node.id, idx, { name: newName });
+                                  if (oldName && oldName !== newName) {
+                                    onFieldRename(node.id, idx, oldName, newName);
+                                  }
+                                }}
+                                placeholder="Tên field"
+                                className={cn(
+                                  "h-7 text-xs bg-transparent border-0 text-gray-300 font-mono px-0 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
+                                  column.visible === false && "line-through text-gray-600"
+                                )}
+                                onClick={(e) => e.stopPropagation()}
+                              />
                             </div>
                             
                             {/* Type dropdown */}
                             <div className="relative">
-                              {isEditing ? (
-                                <Input
-                                  value={editingFieldType}
-                                  onChange={(e) => setEditingFieldType(e.target.value)}
-                                  onBlur={saveEditField}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveEditField();
-                                    if (e.key === 'Escape') cancelEditField();
-                                  }}
-                                  placeholder="Type"
-                                  className="h-7 text-xs bg-gray-700 border-gray-600 text-white w-24"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                              ) : (
+                              <button
+                                onClick={() => setTypeDropdownOpen({ nodeId: node.id, fieldIndex: idx })}
+                                className="h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]"
+                              >
+                                <span className="font-mono">{column.type || 'varchar'}</span>
+                                <ChevronDown className="w-3 h-3" />
+                              </button>
+                              
+                              {isTypeDropdownOpen && (
                                 <>
-                                  <button
-                                    onClick={() => setTypeDropdownOpen({ nodeId: node.id, fieldIndex: idx })}
-                                    className="h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600"
-                                  >
-                                    <span>{column.type || 'varchar'}</span>
-                                    <ChevronDown className="w-3 h-3" />
-                                  </button>
-                                  
-                                  {isTypeDropdownOpen && (
-                                    <>
-                                      <div
-                                        className="fixed inset-0 z-10"
-                                        onClick={() => {
-                                          setTypeDropdownOpen(null);
-                                          setTypeSearchQuery('');
-                                        }}
+                                  <div
+                                    className="fixed inset-0 z-10"
+                                    onClick={() => {
+                                      setTypeDropdownOpen(null);
+                                      setTypeSearchQuery('');
+                                    }}
+                                  />
+                                  <div className="absolute left-0 top-8 z-20 bg-gray-800 border border-gray-700 rounded-md shadow-lg w-56 max-h-64 overflow-hidden">
+                                    <div className="p-2 border-b border-gray-700">
+                                      <Input
+                                        placeholder="Search..."
+                                        value={typeSearchQuery}
+                                        onChange={(e) => setTypeSearchQuery(e.target.value)}
+                                        className="h-7 text-xs bg-gray-700 border-gray-600 text-white"
+                                        onClick={(e) => e.stopPropagation()}
+                                        autoFocus
                                       />
-                                      <div className="absolute left-0 top-8 z-20 bg-gray-800 border border-gray-700 rounded-md shadow-lg w-48 max-h-64 overflow-hidden">
-                                        <div className="p-2 border-b border-gray-700">
-                                          <Input
-                                            placeholder="Search..."
-                                            value={typeSearchQuery}
-                                            onChange={(e) => setTypeSearchQuery(e.target.value)}
-                                            className="h-7 text-xs bg-gray-700 border-gray-600 text-white"
-                                            onClick={(e) => e.stopPropagation()}
-                                            autoFocus
-                                          />
-                                        </div>
-                                        <div className="max-h-48 overflow-y-auto">
-                                          {filteredDataTypes.map((type) => (
-                                            <button
-                                              key={type}
-                                              onClick={() => handleTypeSelect(node.id, idx, type)}
-                                              className={cn(
-                                                "w-full px-3 py-1.5 text-left text-xs hover:bg-gray-700 flex items-center justify-between",
-                                                column.type === type && "bg-gray-700"
-                                              )}
-                                            >
-                                              <span>{type}</span>
-                                              {column.type === type && (
-                                                <Check className="w-3 h-3" />
-                                              )}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    </>
-                                  )}
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto">
+                                      {filteredDataTypes.map((type: string) => (
+                                        <button
+                                          key={type}
+                                          onClick={() => handleTypeSelect(node.id, idx, type)}
+                                          className={cn(
+                                            "w-full px-3 py-2 text-left text-sm hover:bg-gray-700 flex items-center justify-between",
+                                            column.type === type && "bg-gray-700"
+                                          )}
+                                        >
+                                          <span className="font-mono">{type}</span>
+                                          {column.type === type && (
+                                            <Check className="w-4 h-4" />
+                                          )}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
                                 </>
                               )}
                             </div>
@@ -595,7 +543,7 @@ export function TableSidebar({
                               N
                             </button>
                             
-                            {/* PK button */}
+                            {/* PK button - Orange key icon */}
                             <button
                               onClick={() => handleFieldUpdate(node.id, idx, { isPrimaryKey: !column.isPrimaryKey })}
                               className={cn(
@@ -609,7 +557,7 @@ export function TableSidebar({
                               <Key className="w-4 h-4" />
                             </button>
                             
-                            {/* FK button */}
+                            {/* FK button - Blue link icon */}
                             <button
                               onClick={() => handleFieldUpdate(node.id, idx, { isForeignKey: !column.isForeignKey })}
                               className={cn(
@@ -620,52 +568,8 @@ export function TableSidebar({
                               )}
                               title="Foreign Key"
                             >
-                              <Key className="w-4 h-4" />
+                              <Link2 className="w-4 h-4" />
                             </button>
-                            
-                            {/* Field menu */}
-                            <div className="relative opacity-0 group-hover/field:opacity-100 transition-opacity">
-                              <button
-                                onClick={() => {
-                                  const fieldMenuId = `${node.id}-${idx}`;
-                                  setMenuOpenNodeId(menuOpenNodeId === fieldMenuId ? null : fieldMenuId);
-                                }}
-                                className="p-1 hover:bg-gray-700 rounded"
-                              >
-                                <MoreVertical className="w-3 h-3 text-gray-400" />
-                              </button>
-                              
-                              {menuOpenNodeId === `${node.id}-${idx}` && (
-                                <>
-                                  <div
-                                    className="fixed inset-0 z-10"
-                                    onClick={() => setMenuOpenNodeId(null)}
-                                  />
-                                  <div className="absolute right-0 top-6 z-20 bg-gray-800 border border-gray-700 rounded-md shadow-lg min-w-[140px]">
-                                    <button
-                                      onClick={() => {
-                                        startEditField(node.id, idx);
-                                        setMenuOpenNodeId(null);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-700 flex items-center gap-2"
-                                    >
-                                      <Edit2 className="w-3 h-3" />
-                                      Chỉnh sửa
-                                    </button>
-                                    <button
-                                      onClick={() => {
-                                        handleDeleteField(node.id, idx);
-                                        setMenuOpenNodeId(null);
-                                      }}
-                                      className="w-full px-3 py-1.5 text-left text-xs hover:bg-gray-700 text-red-400 flex items-center gap-2"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                      Xóa
-                                    </button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
                           </div>
                         );
                       })}
