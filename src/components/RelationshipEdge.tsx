@@ -17,6 +17,7 @@ export interface RelationshipEdgeData {
   relationshipType?: RelationshipType;
   pathType?: EdgePathType;
   controlPoint?: { x: number; y: number };
+  compositeKeyFields?: string[]; // Các field làm composite PK (cho object connection)
 }
 
 export function RelationshipEdge({
@@ -327,6 +328,24 @@ export function RelationshipEdge({
           </span>
         </div>
       </foreignObject>
+
+      {/* Hiển thị tên composite key nếu có */}
+      {data?.compositeKeyFields && data.compositeKeyFields.length > 0 && (
+        <foreignObject
+          width={200}
+          height={40}
+          x={targetLabelPos.x + 25}
+          y={targetLabelPos.y - 20}
+          className="overflow-visible pointer-events-none"
+          requiredExtensions="http://www.w3.org/1999/xhtml"
+        >
+          <div className="flex items-center gap-1">
+            <span className="text-xs font-semibold text-gray-700 bg-white px-2 py-1 rounded shadow-sm border border-gray-200">
+              PK: {data.compositeKeyFields.join(', ')}
+            </span>
+          </div>
+        </foreignObject>
+      )}
 
       {/* Button 3 chấm ở giữa edge - chỉ hiện khi selected */}
       {showButton && (

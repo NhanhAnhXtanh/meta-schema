@@ -26,6 +26,7 @@ import {
 import { TableNode, TableNodeData } from './components/TableNode';
 import { TableSidebar } from './components/TableSidebar';
 import { RelationshipEdge, RelationshipEdgeData } from './components/RelationshipEdge';
+import { ObjectConnectionDialog } from './components/ObjectConnectionDialog';
 import { Plus, Trash2 } from 'lucide-react';
 import { EdgeTypes } from '@xyflow/react';
 
@@ -138,6 +139,14 @@ function App() {
     return colors;
   });
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  
+  // Object connection dialog state
+  const [objectDialogOpen, setObjectDialogOpen] = useState(false);
+  const [pendingObjectConnection, setPendingObjectConnection] = useState<{
+    sourceNodeId: string;
+    sourceFieldName: string;
+    targetNodeId: string;
+  } | null>(null);
 
   const onNodesChange = useCallback(
     (changes: any) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -168,15 +177,33 @@ function App() {
 
   const isValidConnection = useCallback((connection: Connection) => {
     // Cho phép kết nối giữa mọi handle, chỉ cần khác node
+    // Nếu kết nối đến object-target, chỉ cho phép từ source handle của field (không phải từ object-target)
+    if (connection.targetHandle === 'object-target') {
+      return connection.source !== connection.target && connection.sourceHandle !== 'object-target';
+    }
+    // Không cho phép kết nối từ object-target đến handle khác
+    if (connection.sourceHandle === 'object-target') {
+      return false;
+    }
     return connection.source !== connection.target;
   }, []);
 
   const onConnect = useCallback(
     (params: Connection) => {
-      // Cho phép kết nối giữa mọi handle mà không có điều kiện
-      // Mỗi cột có thể kết nối với bất kỳ cột nào khác
       if (params.source && params.target && params.sourceHandle && params.targetHandle) {
-        // Tạo ID duy nhất cho edge dựa trên source, target và handles
+        // Kiểm tra nếu đây là object connection (kết nối đến object-target handle)
+        if (params.targetHandle === 'object-target') {
+          // Mở dialog để chọn fields làm PK
+          setPendingObjectConnection({
+            sourceNodeId: params.source,
+            sourceFieldName: params.sourceHandle,
+            targetNodeId: params.target,
+          });
+          setObjectDialogOpen(true);
+          return; // Không tạo edge ngay, đợi user confirm trong dialog
+        }
+
+        // Kết nối bình thường giữa các field
         const edgeId = `${params.source}-${params.sourceHandle}-to-${params.target}-${params.targetHandle}`;
         const newEdge: Edge<RelationshipEdgeData> = {
           id: edgeId,
@@ -359,6 +386,92 @@ function App() {
     );
   }, []);
 
+  const handleObjectConnectionConfirm = useCallback(
+    (fieldName: string, selectedFieldNames: string[]) => {
+      if (!pendingObjectConnection) return;
+
+      const { sourceNodeId, sourceFieldName, targetNodeId } = pendingObjectConnection;
+
+      // Tìm target node
+      const targetNode = nodes.find((n) => n.id === targetNodeId);
+      if (!targetNode) return;
+
+      // Tạo field mới trong target node với composite PK
+      const newField = {
+        name: fieldName,
+        type: 'object', // Type đặc biệt cho object
+        isPrimaryKey: true, // Field này là composite PK
+        visible: true,
+        compositeKeyFields: selectedFieldNames, // Lưu các field làm composite PK
+      };
+
+      // Thêm field mới vào target node
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === targetNodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  columns: [...node.data.columns, newField],
+                },
+              }
+            : node
+        )
+      );
+
+      // Đánh dấu source field là FK
+      setNodes((nds) =>
+        nds.map((node) =>
+          node.id === sourceNodeId
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  columns: node.data.columns.map((col) =>
+                    col.name === sourceFieldName
+                      ? { ...col, isForeignKey: true }
+                      : col
+                  ),
+                },
+              }
+            : node
+        )
+      );
+
+      // Tạo edge giữa source field và field mới
+      const edgeId = `${sourceNodeId}-${sourceFieldName}-to-${targetNodeId}-${fieldName}`;
+      const newEdge: Edge<RelationshipEdgeData> = {
+        id: edgeId,
+        source: sourceNodeId,
+        target: targetNodeId,
+        sourceHandle: sourceFieldName,
+        targetHandle: fieldName,
+        type: 'relationship',
+        data: {
+          relationshipType: '1-n',
+          compositeKeyFields: selectedFieldNames, // Lưu để hiển thị trên edge
+        },
+      };
+
+      setEdges((eds) => {
+        const exists = eds.some(
+          (e) =>
+            e.source === sourceNodeId &&
+            e.target === targetNodeId &&
+            e.sourceHandle === sourceFieldName &&
+            e.targetHandle === fieldName
+        );
+        if (exists) return eds;
+        return [...eds, newEdge];
+      });
+
+      // Reset pending connection
+      setPendingObjectConnection(null);
+    },
+    [pendingObjectConnection, nodes]
+  );
+
   return (
     <div className="w-screen h-screen flex">
       {/* Sidebar */}
@@ -515,6 +628,23 @@ function App() {
           </ReactFlow>
         </div>
       </div>
+
+      {/* Object Connection Dialog */}
+      {pendingObjectConnection && (
+        <ObjectConnectionDialog
+          open={objectDialogOpen}
+          onOpenChange={setObjectDialogOpen}
+          sourceNodeId={pendingObjectConnection.sourceNodeId}
+          sourceFieldName={pendingObjectConnection.sourceFieldName}
+          targetNode={
+            nodes.find((n) => n.id === pendingObjectConnection.targetNodeId) || {
+              id: '',
+              data: { label: '', columns: [] },
+            }
+          }
+          onConfirm={handleObjectConnectionConfirm}
+        />
+      )}
     </div>
   );
 }

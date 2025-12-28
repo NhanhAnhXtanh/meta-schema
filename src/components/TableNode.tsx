@@ -10,6 +10,7 @@ export interface TableNodeData {
     isForeignKey?: boolean;
     isNotNull?: boolean;
     visible?: boolean;
+    compositeKeyFields?: string[]; // Các field làm composite PK cho object type
   }>;
   color?: string;
 }
@@ -55,7 +56,14 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
             
             <div className="flex items-center gap-2 flex-1 min-w-0 pointer-events-none">
               <span className="font-medium text-gray-900">{column.name}</span>
-              <span className="text-gray-500 text-xs">{column.type}</span>
+              <span className="text-gray-500 text-xs">
+                {column.type}
+                {column.compositeKeyFields && column.compositeKeyFields.length > 0 && (
+                  <span className="ml-1 text-purple-600">
+                    ({column.compositeKeyFields.join(', ')})
+                  </span>
+                )}
+              </span>
             </div>
             <div className="flex gap-1 items-center pointer-events-none">
               {column.isPrimaryKey && (
@@ -66,6 +74,11 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
               {column.isForeignKey && (
                 <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded">
                   FK
+                </span>
+              )}
+              {column.type === 'object' && (
+                <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">
+                  Object
                 </span>
               )}
             </div>
@@ -84,6 +97,23 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
             />
           </div>
         ))}
+      </div>
+      {/* Object Target Handle - Handle đặc biệt ở đáy để nhận field từ bảng khác */}
+      <div className="relative border-t border-gray-200 py-2">
+        <Handle
+          type="target"
+          position={Position.Bottom}
+          id="object-target"
+          className="react-flow-handle-object-target !w-6 !h-6 !bg-purple-500 !border-2 !border-white !-bottom-3 !transition-colors !duration-200 hover:!bg-purple-600 !z-10 !rounded-full"
+          style={{ 
+            left: '50%', 
+            transform: 'translateX(-50%)',
+            pointerEvents: 'all'
+          }}
+        />
+        <div className="text-center text-xs text-gray-500 mt-1 pointer-events-none">
+          Object
+        </div>
       </div>
     </div>
   );
