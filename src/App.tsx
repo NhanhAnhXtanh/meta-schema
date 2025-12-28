@@ -177,15 +177,22 @@ function App() {
   }, []);
 
   const isValidConnection = useCallback((connection: Connection) => {
-    // Cho phép kết nối giữa mọi handle, chỉ cần khác node
-    // Cho phép kết nối đến object-target từ bất kỳ source handle nào (trừ chính nó)
+    // Không cho phép kết nối giữa 2 đáy bảng (object-target với object-target)
+    if (connection.sourceHandle === 'object-target' && connection.targetHandle === 'object-target') {
+      return false;
+    }
+    
+    // Cho phép kết nối đến object-target từ field (không phải từ object-target)
     if (connection.targetHandle === 'object-target') {
-      return connection.source !== connection.target;
+      return connection.source !== connection.target && connection.sourceHandle !== 'object-target';
     }
-    // Cho phép kết nối từ object-target đến field (ngược lại)
+    
+    // Cho phép kết nối từ object-target đến field (không phải đến object-target)
     if (connection.sourceHandle === 'object-target' && connection.targetHandle) {
-      return connection.source !== connection.target;
+      return connection.source !== connection.target && connection.targetHandle !== 'object-target';
     }
+    
+    // Kết nối bình thường giữa các field
     return connection.source !== connection.target;
   }, []);
 

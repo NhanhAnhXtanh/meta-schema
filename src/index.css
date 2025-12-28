@@ -58,12 +58,24 @@
   }
 }
 
-/* React Flow Handle Styles */
+/* React Flow Handle Styles - Ẩn mặc định, hiển thị khi hover */
 .react-flow__handle {
-  transition: background-color 0.2s ease !important;
+  transition: opacity 0.15s ease, background-color 0.2s ease !important;
   cursor: crosshair !important;
   pointer-events: all !important;
   z-index: 10 !important;
+  opacity: 0 !important; /* Ẩn mặc định */
+}
+
+/* Hiển thị handles khi hover vào node */
+.react-flow__node:hover .react-flow__handle {
+  opacity: 1 !important;
+}
+
+/* Khi đang kéo connection, luôn hiển thị handles */
+.react-flow__node.react-flow__node-dragging .react-flow__handle,
+.react-flow__node.react-flow__node-selected .react-flow__handle {
+  opacity: 1 !important;
 }
 
 /* React Flow Edge Styles - Tăng khả năng click */
@@ -72,8 +84,8 @@
 }
 
 .react-flow__handle:hover {
-  /* Không phóng to, chỉ đổi màu xanh */
   z-index: 20 !important;
+  opacity: 1 !important;
 }
 
 .react-flow__handle-left {
@@ -90,11 +102,44 @@
   pointer-events: all !important;
   cursor: crosshair !important;
   z-index: 10 !important;
+  opacity: 0 !important; /* Ẩn mặc định */
+  transition: opacity 0.15s ease !important;
+}
+
+/* Hiển thị handles khi hover vào node */
+.react-flow__node:hover .react-flow-handle-target,
+.react-flow__node:hover .react-flow-handle-source {
+  opacity: 1 !important;
+}
+
+/* Khi đang kéo connection, luôn hiển thị handles */
+.react-flow__node.react-flow__node-dragging .react-flow-handle-target,
+.react-flow__node.react-flow__node-dragging .react-flow-handle-source,
+.react-flow__node.react-flow__node-selected .react-flow-handle-target,
+.react-flow__node.react-flow__node-selected .react-flow-handle-source {
+  opacity: 1 !important;
 }
 
 .react-flow-handle-target:hover,
 .react-flow-handle-source:hover {
   z-index: 20 !important;
+  opacity: 1 !important;
+}
+
+/* Handle object-target - ẩn mặc định, hiển thị khi hover */
+.react-flow-handle-object-target {
+  opacity: 0 !important;
+  transition: opacity 0.15s ease !important;
+}
+
+.react-flow__node:hover .react-flow-handle-object-target {
+  opacity: 1 !important;
+}
+
+/* Khi đang kéo connection, luôn hiển thị object-target handle */
+.react-flow__node.react-flow__node-dragging .react-flow-handle-object-target,
+.react-flow__node.react-flow__node-selected .react-flow-handle-object-target {
+  opacity: 1 !important;
 }
 
 /* Đảm bảo node không chặn handles */
