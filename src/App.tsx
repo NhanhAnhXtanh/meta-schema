@@ -479,16 +479,17 @@ function App() {
       );
 
       // Tạo edge giữa field FK và field object mới trong bảng PK
+      // Quan hệ: FK (N) -> PK (1)
       const edgeId = `${fkNodeId}-${fkFieldName}-to-${pkNodeId}-${fieldName}`;
       const newEdge: Edge<RelationshipEdgeData> = {
         id: edgeId,
         source: fkNodeId,
         target: pkNodeId,
-        sourceHandle: fkFieldName, // Field FK
-        targetHandle: fieldName, // Field object mới trong bảng PK
+        sourceHandle: fkFieldName, // Field FK (N)
+        targetHandle: fieldName, // Field object mới trong bảng PK (1)
         type: 'relationship',
         data: {
-          relationshipType: '1-n',
+          relationshipType: 'n-1', // FK (N) -> PK (1)
           primaryKeyField: primaryKeyFieldName, // PK được chọn trong popup
           objectFieldName: fieldName, // Tên field object mới được tạo
         },

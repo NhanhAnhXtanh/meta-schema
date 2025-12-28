@@ -430,6 +430,7 @@ export function TableSidebar({
                         const isTypeDropdownOpen = typeDropdownOpen?.nodeId === node.id && typeDropdownOpen?.fieldIndex === idx;
                         const isDragging = draggedField?.nodeId === node.id && draggedField?.fieldIndex === idx;
                         const isDragOver = dragOverFieldIndex === idx && draggedField?.nodeId === node.id;
+                        const isObjectField = column.type === 'object';
                         
                         return (
                           <div
@@ -454,13 +455,15 @@ export function TableSidebar({
                               checked={column.visible !== false}
                               onChange={() => handleFieldVisibilityToggle(node.id, idx)}
                               className="w-4 h-4 cursor-pointer"
+                              disabled={isObjectField}
                             />
                             
-                            {/* Field name - editable directly */}
+                            {/* Field name - editable directly, disabled for object */}
                             <div className="flex-1 min-w-0">
                               <Input
                                 value={column.name || ''}
                                 onChange={(e) => {
+                                  if (isObjectField) return;
                                   const oldName = column.name;
                                   const newName = e.target.value;
                                   handleFieldUpdate(node.id, idx, { name: newName });
@@ -469,25 +472,35 @@ export function TableSidebar({
                                   }
                                 }}
                                 placeholder="Tên field"
+                                disabled={isObjectField}
                                 className={cn(
                                   "h-7 text-xs bg-transparent border-0 text-gray-300 font-mono px-0 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
-                                  column.visible === false && "line-through text-gray-600"
+                                  column.visible === false && "line-through text-gray-600",
+                                  isObjectField && "cursor-not-allowed opacity-60"
                                 )}
                                 onClick={(e) => e.stopPropagation()}
                               />
                             </div>
                             
-                            {/* Type dropdown */}
+                            {/* Type dropdown - disabled for object */}
                             <div className="relative">
                               <button
-                                onClick={() => setTypeDropdownOpen({ nodeId: node.id, fieldIndex: idx })}
-                                className="h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]"
+                                onClick={() => {
+                                  if (!isObjectField) {
+                                    setTypeDropdownOpen({ nodeId: node.id, fieldIndex: idx });
+                                  }
+                                }}
+                                disabled={isObjectField}
+                                className={cn(
+                                  "h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]",
+                                  isObjectField && "cursor-not-allowed opacity-60"
+                                )}
                               >
                                 <span className="font-mono">{column.type || 'varchar'}</span>
-                                <ChevronDown className="w-3 h-3" />
+                                {!isObjectField && <ChevronDown className="w-3 h-3" />}
                               </button>
                               
-                              {isTypeDropdownOpen && (
+                              {isTypeDropdownOpen && !isObjectField && (
                                 <>
                                   <div
                                     className="fixed inset-0 z-10"
@@ -529,42 +542,60 @@ export function TableSidebar({
                               )}
                             </div>
                             
-                            {/* NotNull button */}
+                            {/* NotNull button - disabled for object */}
                             <button
-                              onClick={() => handleFieldUpdate(node.id, idx, { isNotNull: !column.isNotNull })}
+                              onClick={() => {
+                                if (!isObjectField) {
+                                  handleFieldUpdate(node.id, idx, { isNotNull: !column.isNotNull });
+                                }
+                              }}
+                              disabled={isObjectField}
                               className={cn(
                                 "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
                                 column.isNotNull 
                                   ? "bg-orange-500 text-white" 
-                                  : "bg-gray-700 text-gray-400 hover:bg-gray-600"
+                                  : "bg-gray-700 text-gray-400 hover:bg-gray-600",
+                                isObjectField && "cursor-not-allowed opacity-60"
                               )}
                               title="Not Null"
                             >
                               N
                             </button>
                             
-                            {/* PK button - Orange key icon */}
+                            {/* PK button - disabled for object */}
                             <button
-                              onClick={() => handleFieldUpdate(node.id, idx, { isPrimaryKey: !column.isPrimaryKey })}
+                              onClick={() => {
+                                if (!isObjectField) {
+                                  handleFieldUpdate(node.id, idx, { isPrimaryKey: !column.isPrimaryKey });
+                                }
+                              }}
+                              disabled={isObjectField}
                               className={cn(
                                 "h-7 w-7 flex items-center justify-center rounded transition-colors",
                                 column.isPrimaryKey 
                                   ? "text-orange-400" 
-                                  : "text-gray-400 hover:text-gray-300"
+                                  : "text-gray-400 hover:text-gray-300",
+                                isObjectField && "cursor-not-allowed opacity-60"
                               )}
                               title="Primary Key"
                             >
                               <Key className="w-4 h-4" />
                             </button>
                             
-                            {/* FK button - Blue link icon */}
+                            {/* FK button - disabled for object */}
                             <button
-                              onClick={() => handleFieldUpdate(node.id, idx, { isForeignKey: !column.isForeignKey })}
+                              onClick={() => {
+                                if (!isObjectField) {
+                                  handleFieldUpdate(node.id, idx, { isForeignKey: !column.isForeignKey });
+                                }
+                              }}
+                              disabled={isObjectField}
                               className={cn(
                                 "h-7 w-7 flex items-center justify-center rounded transition-colors",
                                 column.isForeignKey 
                                   ? "text-blue-400" 
-                                  : "text-gray-400 hover:text-gray-300"
+                                  : "text-gray-400 hover:text-gray-300",
+                                isObjectField && "cursor-not-allowed opacity-60"
                               )}
                               title="Foreign Key"
                             >
