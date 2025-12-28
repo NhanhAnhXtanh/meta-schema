@@ -460,6 +460,83 @@ function App() {
     }
   }, [nodes, edges]);
 
+  const handleFieldDelete = useCallback((nodeId: string, fieldIndex: number) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+    
+    const field = node.data.columns[fieldIndex];
+    
+    // Không cho phép xóa field object
+    if (field.type === 'object') {
+      return;
+    }
+    
+    // Nếu field này là FK và có edge kết nối đến object field, thì xóa luôn object field đó
+    if (field.isForeignKey) {
+      // Tìm edge từ field FK này đến object field
+      const connectedEdges = edges.filter(
+        (edge) =>
+          edge.source === nodeId &&
+          edge.sourceHandle === field.name &&
+          edge.data?.objectFieldName // Edge có objectFieldName nghĩa là kết nối đến object field
+      );
+
+      // Xóa các object field được kết nối
+      connectedEdges.forEach((edge) => {
+        const targetNode = nodes.find((n) => n.id === edge.target);
+        if (targetNode && edge.data?.objectFieldName) {
+          const objectFieldName = edge.data.objectFieldName;
+          // Xóa object field trong bảng đích
+          setNodes((nds) =>
+            nds.map((n) =>
+              n.id === edge.target
+                ? {
+                    ...n,
+                    data: {
+                      ...n.data,
+                      columns: n.data.columns.filter((col) => 
+                        !(col.name === objectFieldName && col.type === 'object')
+                      ),
+                    },
+                  }
+                : n
+            )
+          );
+        }
+      });
+    }
+    
+    // Xóa field
+    const newColumns = node.data.columns.filter((_, idx) => idx !== fieldIndex);
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id === nodeId
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                columns: newColumns,
+              },
+            }
+          : n
+      )
+    );
+    
+    // Xóa các edge liên quan đến field này
+    setEdges((eds) =>
+      eds.filter(
+        (edge) =>
+          !(
+            (edge.source === nodeId && edge.sourceHandle === field.name) ||
+            (edge.target === nodeId && edge.targetHandle === field.name)
+          )
+      )
+    );
+    
+    // Cập nhật edges khi field bị xóa (cập nhật index của các field sau field bị xóa)
+    handleFieldRename(nodeId, fieldIndex, field.name, ''); // Trigger rename để cleanup edges
+  }, [nodes, edges, handleFieldRename]);
+
   const handleObjectConnectionConfirm = useCallback(
     (fieldName: string, primaryKeyFieldName: string) => {
       if (!pendingObjectConnection) return;
@@ -585,6 +662,7 @@ function App() {
         onFieldReorder={handleFieldReorder}
         onFieldRename={handleFieldRename}
         onFieldVisibilityToggle={handleFieldVisibilityToggle}
+        onFieldDelete={handleFieldDelete}
       />
 
       {/* Main Content */}

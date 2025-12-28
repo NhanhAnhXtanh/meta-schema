@@ -36,7 +36,7 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
           <div
             key={index}
             className={cn(
-              'px-4 py-2 text-sm flex items-center justify-between relative',
+              'px-4 py-2 text-sm flex items-center gap-2 relative',
               column.isPrimaryKey && 'bg-yellow-50',
               column.isForeignKey && 'bg-blue-50'
             )}
@@ -54,18 +54,21 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
               }}
             />
             
-            <div className="flex items-center gap-2 flex-1 min-w-0 pointer-events-none">
-              <span className="font-medium text-gray-900">{column.name}</span>
-              {column.type === 'object' && column.primaryKeyField ? (
-                <span className="text-gray-500 text-xs flex items-center gap-1">
-                  <span className="text-purple-600">→</span>
-                  <span className="text-purple-600">{column.primaryKeyField}</span>
-                </span>
-              ) : (
-                <span className="text-gray-500 text-xs">{column.type}</span>
-              )}
-            </div>
-            <div className="flex gap-1 items-center pointer-events-none">
+            {/* Field name */}
+            <span className="font-medium text-gray-900 pointer-events-none">{column.name || ''}</span>
+            
+            {/* Field type */}
+            {column.type === 'object' && column.primaryKeyField ? (
+              <span className="text-gray-500 text-xs flex items-center gap-1 pointer-events-none">
+                <span className="text-purple-600">→</span>
+                <span className="text-purple-600">{column.primaryKeyField}</span>
+              </span>
+            ) : (
+              <span className="text-gray-500 text-xs pointer-events-none">{column.type}</span>
+            )}
+            
+            {/* Badges */}
+            <div className="flex gap-1 items-center ml-auto pointer-events-none">
               {column.isPrimaryKey && (
                 <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded">
                   PK

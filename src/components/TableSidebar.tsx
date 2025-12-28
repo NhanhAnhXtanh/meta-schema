@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Node } from '@xyflow/react';
 import { TableNodeData } from './TableNode';
 import { Button } from './ui/button';
@@ -73,6 +73,7 @@ export function TableSidebar({
   onFieldReorder,
   onFieldRename,
   onFieldVisibilityToggle,
+  onFieldDelete,
 }: TableSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -87,6 +88,9 @@ export function TableSidebar({
   const [typeSearchQuery, setTypeSearchQuery] = useState('');
   const [draggedField, setDraggedField] = useState<{ nodeId: string; fieldIndex: number } | null>(null);
   const [dragOverFieldIndex, setDragOverFieldIndex] = useState<number | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(320); // Default width: w-80 = 320px
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const filteredNodes = useMemo(() => {
     if (!searchQuery.trim()) return nodes;
@@ -179,6 +183,25 @@ export function TableSidebar({
     onNodeUpdate(nodeId, { columns: newColumns });
     // Tự động expand
     setExpandedNodes((prev) => new Set(prev).add(nodeId));
+  };
+
+  const handleDeleteField = (nodeId: string, fieldIndex: number) => {
+    if (onFieldDelete) {
+      onFieldDelete(nodeId, fieldIndex);
+    } else {
+      // Fallback nếu không có callback
+      const node = nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      const field = node.data.columns[fieldIndex];
+      
+      // Không cho phép xóa field object
+      if (field.type === 'object') {
+        return;
+      }
+      
+      const newColumns = node.data.columns.filter((_, idx) => idx !== fieldIndex);
+      onNodeUpdate(nodeId, { columns: newColumns });
+    }
   };
 
 
@@ -282,8 +305,47 @@ export function TableSidebar({
     return tableColors[nodeId] || COLOR_OPTIONS[0].value;
   };
 
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  }, []);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      const newWidth = e.clientX;
+      // Giới hạn width từ 200px đến 800px
+      if (newWidth >= 200 && newWidth <= 800) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
+
   return (
-    <div className="w-80 bg-gray-900 text-white flex flex-col h-full border-r border-gray-800">
+    <div 
+      ref={sidebarRef}
+      className="bg-gray-900 text-white flex flex-col h-full border-r border-gray-800 relative"
+      style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '800px' }}
+    >
       {/* Header */}
       <div className="p-4 border-b border-gray-800 space-y-3">
         <div className="flex items-center gap-2">
@@ -446,12 +508,20 @@ export function TableSidebar({
                           <div
                             key={idx}
                             draggable
-                            onDragStart={(e) => handleFieldDragStart(e, node.id, idx)}
+                            onDragStart={(e) => {
+                              // Chỉ cho phép drag nếu không phải từ Input
+                              const target = e.target as HTMLElement;
+                              if (target.tagName === 'INPUT' || target.closest('input')) {
+                                e.preventDefault();
+                                return;
+                              }
+                              handleFieldDragStart(e, node.id, idx);
+                            }}
                             onDragOver={(e) => handleFieldDragOver(e, node.id, idx)}
                             onDragLeave={handleFieldDragLeave}
                             onDrop={(e) => handleFieldDrop(e, node.id, idx)}
                             className={cn(
-                              "group/field flex items-center gap-2 px-2 py-1.5 hover:bg-gray-800 rounded",
+                              "group/field flex items-center gap-2 px-2 py-1.5 hover:bg-gray-800 rounded cursor-move",
                               isDragging && "opacity-50",
                               isDragOver && "border-t-2 border-blue-500"
                             )}
@@ -468,7 +538,7 @@ export function TableSidebar({
                             />
                             
                             {/* Field name - editable directly, disabled for object */}
-                            <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-[60px] overflow-hidden">
                               <Input
                                 value={column.name || ''}
                                 onChange={(e) => {
@@ -483,11 +553,13 @@ export function TableSidebar({
                                 placeholder="Tên field"
                                 disabled={isObjectField}
                                 className={cn(
-                                  "h-7 text-xs bg-transparent border-0 text-gray-300 font-mono px-0 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
+                                  "h-7 w-full text-xs bg-transparent border-0 text-gray-200 font-mono px-1 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
                                   column.visible === false && "line-through text-gray-600",
                                   isObjectField && "cursor-not-allowed opacity-60"
                                 )}
                                 onClick={(e) => e.stopPropagation()}
+                                onDragStart={(e) => e.preventDefault()}
+                                draggable={false}
                               />
                             </div>
                             
@@ -610,6 +682,17 @@ export function TableSidebar({
                             >
                               <Link2 className="w-4 h-4" />
                             </button>
+                            
+                            {/* Delete button - disabled for object */}
+                            {!isObjectField && (
+                              <button
+                                onClick={() => handleDeleteField(node.id, idx)}
+                                className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover/field:opacity-100"
+                                title="Xóa field"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         );
                       })}
@@ -654,6 +737,15 @@ export function TableSidebar({
         </DialogContent>
       </Dialog>
 
+      {/* Resize Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={cn(
+          "absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-blue-500/50 transition-colors",
+          isResizing && "bg-blue-500"
+        )}
+        style={{ zIndex: 1000 }}
+      />
     </div>
   );
 }
