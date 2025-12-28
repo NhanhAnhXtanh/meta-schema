@@ -146,6 +146,7 @@ function App() {
     sourceNodeId: string;
     sourceFieldName: string;
     targetNodeId: string;
+    targetFieldName?: string; // Field PK được chọn khi kéo ngược lại
   } | null>(null);
 
   const onNodesChange = useCallback(
@@ -181,9 +182,9 @@ function App() {
     if (connection.targetHandle === 'object-target') {
       return connection.source !== connection.target;
     }
-    // Không cho phép kết nối từ object-target đến handle khác
-    if (connection.sourceHandle === 'object-target') {
-      return false;
+    // Cho phép kết nối từ object-target đến field (ngược lại)
+    if (connection.sourceHandle === 'object-target' && connection.targetHandle) {
+      return connection.source !== connection.target;
     }
     return connection.source !== connection.target;
   }, []);
@@ -193,11 +194,28 @@ function App() {
       if (params.source && params.target && params.sourceHandle && params.targetHandle) {
         // Kiểm tra nếu đây là object connection (kết nối đến object-target handle)
         if (params.targetHandle === 'object-target') {
-          // Mở dialog để chọn fields làm PK
+          // Kéo từ field đến đáy bảng (bình thường)
           setPendingObjectConnection({
             sourceNodeId: params.source,
             sourceFieldName: params.sourceHandle,
             targetNodeId: params.target,
+          });
+          setObjectDialogOpen(true);
+          return; // Không tạo edge ngay, đợi user confirm trong dialog
+        }
+
+        // Kiểm tra nếu đây là object connection ngược lại (kéo từ object-target đến field)
+        if (params.sourceHandle === 'object-target') {
+          // Kéo từ đáy bảng đến field (ngược lại)
+          // Trong trường hợp này:
+          // - sourceNodeId là bảng chứa object-target (sẽ chứa FK - field mới)
+          // - targetNodeId là bảng chứa field được chọn (chứa PK)
+          // - targetHandle là field được chọn (PK)
+          setPendingObjectConnection({
+            sourceNodeId: params.source, // Bảng chứa object-target (sẽ tạo field mới ở đây)
+            sourceFieldName: 'object-target', // Đánh dấu đây là kết nối ngược
+            targetNodeId: params.target, // Bảng chứa field PK
+            targetFieldName: params.targetHandle, // Field PK được chọn
           });
           setObjectDialogOpen(true);
           return; // Không tạo edge ngay, đợi user confirm trong dialog
@@ -391,12 +409,33 @@ function App() {
       if (!pendingObjectConnection) return;
 
       const { sourceNodeId, sourceFieldName, targetNodeId } = pendingObjectConnection;
+      const isReverse = sourceFieldName === 'object-target';
 
-      // Tìm target node
-      const targetNode = nodes.find((n) => n.id === targetNodeId);
-      if (!targetNode) return;
+      // Logic đơn giản: Đáy bảng luôn chứa PK, field được kéo luôn là FK
+      let pkNodeId: string; // Bảng chứa PK (đáy bảng)
+      let fkNodeId: string; // Bảng chứa FK (field được kéo)
+      let fkFieldName: string; // Tên field FK
 
-      // Tạo field mới trong target node - field này tham chiếu đến primaryKeyFieldName
+      if (isReverse) {
+        // Kéo từ đáy bảng A đến field B
+        // Đáy bảng A = chứa PK (chọn trong popup)
+        // Field B = FK
+        pkNodeId = sourceNodeId; // Bảng A chứa PK
+        fkNodeId = targetNodeId; // Bảng B chứa FK
+        fkFieldName = pendingObjectConnection.targetFieldName || ''; // Field B là FK
+      } else {
+        // Kéo từ field A đến đáy bảng B
+        // Field A = FK
+        // Đáy bảng B = chứa PK (chọn trong popup)
+        pkNodeId = targetNodeId; // Bảng B chứa PK
+        fkNodeId = sourceNodeId; // Bảng A chứa FK
+        fkFieldName = sourceFieldName; // Field A là FK
+      }
+
+      const pkNode = nodes.find((n) => n.id === pkNodeId);
+      if (!pkNode) return;
+
+      // Tạo field mới trong bảng chứa PK (đáy bảng) - field này tham chiếu đến PK được chọn
       const newField = {
         name: fieldName,
         type: 'object', // Type đặc biệt cho object
@@ -405,10 +444,10 @@ function App() {
         primaryKeyField: primaryKeyFieldName, // Lưu field làm PK
       };
 
-      // Thêm field mới vào target node
+      // Thêm field mới vào bảng chứa PK
       setNodes((nds) =>
         nds.map((node) =>
-          node.id === targetNodeId
+          node.id === pkNodeId
             ? {
                 ...node,
                 data: {
@@ -420,16 +459,16 @@ function App() {
         )
       );
 
-      // Đánh dấu source field là FK
+      // Đánh dấu field được kéo là FK
       setNodes((nds) =>
         nds.map((node) =>
-          node.id === sourceNodeId
+          node.id === fkNodeId
             ? {
                 ...node,
                 data: {
                   ...node.data,
                   columns: node.data.columns.map((col) =>
-                    col.name === sourceFieldName
+                    col.name === fkFieldName
                       ? { ...col, isForeignKey: true }
                       : col
                   ),
@@ -439,19 +478,18 @@ function App() {
         )
       );
 
-      // Tạo edge giữa source field (FK) và field object mới trong target node
-      // Edge này sẽ kết nối đến field object mới, nhưng PK thực sự là primaryKeyFieldName
-      const edgeId = `${sourceNodeId}-${sourceFieldName}-to-${targetNodeId}-${fieldName}`;
+      // Tạo edge giữa field FK và field object mới trong bảng PK
+      const edgeId = `${fkNodeId}-${fkFieldName}-to-${pkNodeId}-${fieldName}`;
       const newEdge: Edge<RelationshipEdgeData> = {
         id: edgeId,
-        source: sourceNodeId,
-        target: targetNodeId,
-        sourceHandle: sourceFieldName,
-        targetHandle: fieldName, // Kết nối đến field object mới
+        source: fkNodeId,
+        target: pkNodeId,
+        sourceHandle: fkFieldName, // Field FK
+        targetHandle: fieldName, // Field object mới trong bảng PK
         type: 'relationship',
         data: {
           relationshipType: '1-n',
-          primaryKeyField: primaryKeyFieldName, // Lưu để hiển thị trên edge - đây là PK thực sự
+          primaryKeyField: primaryKeyFieldName, // PK được chọn trong popup
           objectFieldName: fieldName, // Tên field object mới được tạo
         },
       };
@@ -459,10 +497,10 @@ function App() {
       setEdges((eds) => {
         const exists = eds.some(
           (e) =>
-            e.source === sourceNodeId &&
-            e.target === targetNodeId &&
-            e.sourceHandle === sourceFieldName &&
-            e.targetHandle === primaryKeyFieldName
+            e.source === fkNodeId &&
+            e.target === pkNodeId &&
+            e.sourceHandle === fkFieldName &&
+            e.targetHandle === fieldName
         );
         if (exists) return eds;
         return [...eds, newEdge];
@@ -644,7 +682,16 @@ function App() {
               data: { label: '', columns: [] },
             }
           }
+          sourceNode={
+            pendingObjectConnection.sourceFieldName === 'object-target'
+              ? nodes.find((n) => n.id === pendingObjectConnection.sourceNodeId) || {
+                  id: '',
+                  data: { label: '', columns: [] },
+                }
+              : undefined
+          }
           onConfirm={handleObjectConnectionConfirm}
+          isReverse={pendingObjectConnection.sourceFieldName === 'object-target'}
         />
       )}
     </div>

@@ -24,7 +24,9 @@ interface ObjectConnectionDialogProps {
   sourceNodeId: string;
   sourceFieldName: string;
   targetNode: { id: string; data: TableNodeData };
+  sourceNode?: { id: string; data: TableNodeData }; // Cần khi kéo ngược lại để validate tên field và chọn PK
   onConfirm: (fieldName: string, primaryKeyFieldName: string) => void;
+  isReverse?: boolean; // true nếu kéo từ object-target đến field (ngược lại)
 }
 
 export function ObjectConnectionDialog({
@@ -33,13 +35,29 @@ export function ObjectConnectionDialog({
   sourceNodeId,
   sourceFieldName,
   targetNode,
+  sourceNode,
   onConfirm,
+  isReverse = false,
 }: ObjectConnectionDialogProps) {
   const [fieldName, setFieldName] = useState('');
   const [selectedPrimaryKeyField, setSelectedPrimaryKeyField] = useState<string>('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const availableFields = targetNode.data.columns.filter((col) => col.visible !== false);
+  // Khi kéo ngược lại: đáy bảng chứa PK, nên chọn PK từ bảng chứa đáy bảng (sourceNode)
+  // Khi kéo bình thường: đáy bảng chứa PK, nên chọn PK từ bảng chứa đáy bảng (targetNode)
+  const pkNode = isReverse && sourceNode ? sourceNode : targetNode;
+  const availableFields = pkNode.data.columns.filter((col) => col.visible !== false);
+  
+  // Kiểm tra tên field có trùng không
+  // Field mới luôn được tạo trong bảng chứa PK (đáy bảng)
+  const isFieldNameDuplicate = (name: string) => {
+    if (!name.trim()) return false;
+    return availableFields.some((field) => field.name.toLowerCase() === name.toLowerCase().trim());
+  };
+  
+  const fieldNameError = fieldName.trim() && isFieldNameDuplicate(fieldName) 
+    ? 'Tên field này đã tồn tại trong bảng' 
+    : '';
 
   const handleConfirm = () => {
     if (fieldName.trim() && selectedPrimaryKeyField) {
@@ -65,7 +83,7 @@ export function ObjectConnectionDialog({
         <DialogHeader>
           <DialogTitle>Tạo Object Connection</DialogTitle>
           <DialogDescription>
-            Chọn trường trong bảng <strong>{targetNode.data.label}</strong> làm khóa chính và đặt tên cho field mới
+            Chọn trường trong bảng <strong>{pkNode.data.label}</strong> (bảng chứa đáy bảng) làm khóa chính và đặt tên cho field mới
           </DialogDescription>
         </DialogHeader>
         
@@ -80,7 +98,11 @@ export function ObjectConnectionDialog({
               onChange={(e) => setFieldName(e.target.value)}
               placeholder="Ví dụ: product_info"
               autoFocus
+              className={cn(fieldNameError && 'border-red-500')}
             />
+            {fieldNameError && (
+              <p className="text-xs text-red-500 mt-1">{fieldNameError}</p>
+            )}
           </div>
 
           {/* Select field for PK - Dropdown */}
@@ -148,8 +170,9 @@ export function ObjectConnectionDialog({
           <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm text-blue-800">
             <p className="font-medium mb-1">Thông tin:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
-              <li>Field <strong>{sourceFieldName}</strong> từ bảng nguồn sẽ là Foreign Key (FK)</li>
-              <li>Field mới <strong>{fieldName || '...'}</strong> sẽ tham chiếu đến field <strong>{selectedPrimaryKeyField || '...'}</strong> làm Primary Key</li>
+              <li>Đáy bảng <strong>{pkNode.data.label}</strong> chứa Primary Key (PK): <strong>{selectedPrimaryKeyField || '...'}</strong></li>
+              <li>Field được kéo/nối sẽ là Foreign Key (FK)</li>
+              <li>Field mới <strong>{fieldName || '...'}</strong> sẽ được tạo trong bảng <strong>{pkNode.data.label}</strong> và tham chiếu đến <strong>{selectedPrimaryKeyField || '...'}</strong></li>
             </ul>
           </div>
 
@@ -160,7 +183,7 @@ export function ObjectConnectionDialog({
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={!fieldName.trim() || !selectedPrimaryKeyField}
+              disabled={!fieldName.trim() || !selectedPrimaryKeyField || isFieldNameDuplicate(fieldName)}
             >
               Tạo
             </Button>
