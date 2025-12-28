@@ -177,9 +177,9 @@ function App() {
 
   const isValidConnection = useCallback((connection: Connection) => {
     // Cho phép kết nối giữa mọi handle, chỉ cần khác node
-    // Nếu kết nối đến object-target, chỉ cho phép từ source handle của field (không phải từ object-target)
+    // Cho phép kết nối đến object-target từ bất kỳ source handle nào (trừ chính nó)
     if (connection.targetHandle === 'object-target') {
-      return connection.source !== connection.target && connection.sourceHandle !== 'object-target';
+      return connection.source !== connection.target;
     }
     // Không cho phép kết nối từ object-target đến handle khác
     if (connection.sourceHandle === 'object-target') {
@@ -387,7 +387,7 @@ function App() {
   }, []);
 
   const handleObjectConnectionConfirm = useCallback(
-    (fieldName: string, selectedFieldNames: string[]) => {
+    (fieldName: string, primaryKeyFieldName: string) => {
       if (!pendingObjectConnection) return;
 
       const { sourceNodeId, sourceFieldName, targetNodeId } = pendingObjectConnection;
@@ -396,13 +396,13 @@ function App() {
       const targetNode = nodes.find((n) => n.id === targetNodeId);
       if (!targetNode) return;
 
-      // Tạo field mới trong target node với composite PK
+      // Tạo field mới trong target node - field này tham chiếu đến primaryKeyFieldName
       const newField = {
         name: fieldName,
         type: 'object', // Type đặc biệt cho object
-        isPrimaryKey: true, // Field này là composite PK
+        isPrimaryKey: false, // Field này không phải PK, nó tham chiếu đến PK khác
         visible: true,
-        compositeKeyFields: selectedFieldNames, // Lưu các field làm composite PK
+        primaryKeyField: primaryKeyFieldName, // Lưu field làm PK
       };
 
       // Thêm field mới vào target node
@@ -439,18 +439,20 @@ function App() {
         )
       );
 
-      // Tạo edge giữa source field và field mới
+      // Tạo edge giữa source field (FK) và field object mới trong target node
+      // Edge này sẽ kết nối đến field object mới, nhưng PK thực sự là primaryKeyFieldName
       const edgeId = `${sourceNodeId}-${sourceFieldName}-to-${targetNodeId}-${fieldName}`;
       const newEdge: Edge<RelationshipEdgeData> = {
         id: edgeId,
         source: sourceNodeId,
         target: targetNodeId,
         sourceHandle: sourceFieldName,
-        targetHandle: fieldName,
+        targetHandle: fieldName, // Kết nối đến field object mới
         type: 'relationship',
         data: {
           relationshipType: '1-n',
-          compositeKeyFields: selectedFieldNames, // Lưu để hiển thị trên edge
+          primaryKeyField: primaryKeyFieldName, // Lưu để hiển thị trên edge - đây là PK thực sự
+          objectFieldName: fieldName, // Tên field object mới được tạo
         },
       };
 
@@ -460,7 +462,7 @@ function App() {
             e.source === sourceNodeId &&
             e.target === targetNodeId &&
             e.sourceHandle === sourceFieldName &&
-            e.targetHandle === fieldName
+            e.targetHandle === primaryKeyFieldName
         );
         if (exists) return eds;
         return [...eds, newEdge];

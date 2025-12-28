@@ -17,7 +17,8 @@ export interface RelationshipEdgeData {
   relationshipType?: RelationshipType;
   pathType?: EdgePathType;
   controlPoint?: { x: number; y: number };
-  compositeKeyFields?: string[]; // Các field làm composite PK (cho object connection)
+  primaryKeyField?: string; // Field làm PK (cho object connection)
+  objectFieldName?: string; // Tên field object mới được tạo
 }
 
 export function RelationshipEdge({
@@ -329,8 +330,8 @@ export function RelationshipEdge({
         </div>
       </foreignObject>
 
-      {/* Hiển thị tên composite key nếu có */}
-      {data?.compositeKeyFields && data.compositeKeyFields.length > 0 && (
+      {/* Hiển thị tên primary key nếu có */}
+      {data?.primaryKeyField && (
         <foreignObject
           width={200}
           height={40}
@@ -341,7 +342,7 @@ export function RelationshipEdge({
         >
           <div className="flex items-center gap-1">
             <span className="text-xs font-semibold text-gray-700 bg-white px-2 py-1 rounded shadow-sm border border-gray-200">
-              PK: {data.compositeKeyFields.join(', ')}
+              PK: {data.primaryKeyField}
             </span>
           </div>
         </foreignObject>

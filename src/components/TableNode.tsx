@@ -10,7 +10,7 @@ export interface TableNodeData {
     isForeignKey?: boolean;
     isNotNull?: boolean;
     visible?: boolean;
-    compositeKeyFields?: string[]; // Các field làm composite PK cho object type
+    primaryKeyField?: string; // Field làm PK cho object type (thay vì compositeKeyFields)
   }>;
   color?: string;
 }
@@ -56,14 +56,14 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
             
             <div className="flex items-center gap-2 flex-1 min-w-0 pointer-events-none">
               <span className="font-medium text-gray-900">{column.name}</span>
-              <span className="text-gray-500 text-xs">
-                {column.type}
-                {column.compositeKeyFields && column.compositeKeyFields.length > 0 && (
-                  <span className="ml-1 text-purple-600">
-                    ({column.compositeKeyFields.join(', ')})
-                  </span>
-                )}
-              </span>
+              {column.type === 'object' && column.primaryKeyField ? (
+                <span className="text-gray-500 text-xs flex items-center gap-1">
+                  <span className="text-purple-600">→</span>
+                  <span className="text-purple-600">{column.primaryKeyField}</span>
+                </span>
+              ) : (
+                <span className="text-gray-500 text-xs">{column.type}</span>
+              )}
             </div>
             <div className="flex gap-1 items-center pointer-events-none">
               {column.isPrimaryKey && (
@@ -77,9 +77,16 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
                 </span>
               )}
               {column.type === 'object' && (
-                <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">
-                  Object
-                </span>
+                <>
+                  <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded">
+                    O
+                  </span>
+                  {column.primaryKeyField && (
+                    <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded">
+                      PK
+                    </span>
+                  )}
+                </>
               )}
             </div>
             
@@ -111,9 +118,6 @@ export function TableNode({ data, selected }: NodeProps<TableNodeData>) {
             pointerEvents: 'all'
           }}
         />
-        <div className="text-center text-xs text-gray-500 mt-1 pointer-events-none">
-          Object
-        </div>
       </div>
     </div>
   );

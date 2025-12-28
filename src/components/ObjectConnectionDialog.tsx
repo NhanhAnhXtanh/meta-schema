@@ -9,7 +9,13 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { TableNodeData } from './TableNode';
-import { Check } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ObjectConnectionDialogProps {
@@ -18,7 +24,7 @@ interface ObjectConnectionDialogProps {
   sourceNodeId: string;
   sourceFieldName: string;
   targetNode: { id: string; data: TableNodeData };
-  onConfirm: (fieldName: string, selectedFieldNames: string[]) => void;
+  onConfirm: (fieldName: string, primaryKeyFieldName: string) => void;
 }
 
 export function ObjectConnectionDialog({
@@ -30,35 +36,28 @@ export function ObjectConnectionDialog({
   onConfirm,
 }: ObjectConnectionDialogProps) {
   const [fieldName, setFieldName] = useState('');
-  const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
+  const [selectedPrimaryKeyField, setSelectedPrimaryKeyField] = useState<string>('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  const toggleField = (fieldName: string) => {
-    setSelectedFields((prev) => {
-      const next = new Set(prev);
-      if (next.has(fieldName)) {
-        next.delete(fieldName);
-      } else {
-        next.add(fieldName);
-      }
-      return next;
-    });
-  };
+  const availableFields = targetNode.data.columns.filter((col) => col.visible !== false);
 
   const handleConfirm = () => {
-    if (fieldName.trim() && selectedFields.size > 0) {
-      onConfirm(fieldName.trim(), Array.from(selectedFields));
+    if (fieldName.trim() && selectedPrimaryKeyField) {
+      onConfirm(fieldName.trim(), selectedPrimaryKeyField);
       // Reset form
       setFieldName('');
-      setSelectedFields(new Set());
+      setSelectedPrimaryKeyField('');
       onOpenChange(false);
     }
   };
 
   const handleCancel = () => {
     setFieldName('');
-    setSelectedFields(new Set());
+    setSelectedPrimaryKeyField('');
     onOpenChange(false);
   };
+
+  const selectedField = availableFields.find((f) => f.name === selectedPrimaryKeyField);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,7 +65,7 @@ export function ObjectConnectionDialog({
         <DialogHeader>
           <DialogTitle>Tạo Object Connection</DialogTitle>
           <DialogDescription>
-            Chọn các trường trong bảng <strong>{targetNode.data.label}</strong> làm khóa chính và đặt tên cho field mới
+            Chọn trường trong bảng <strong>{targetNode.data.label}</strong> làm khóa chính và đặt tên cho field mới
           </DialogDescription>
         </DialogHeader>
         
@@ -84,43 +83,65 @@ export function ObjectConnectionDialog({
             />
           </div>
 
-          {/* Select fields for PK */}
+          {/* Select field for PK - Dropdown */}
           <div>
             <label className="text-sm font-medium mb-2 block">
-              Chọn các trường làm Khóa Chính (PK)
+              Chọn trường làm Khóa Chính (PK)
             </label>
-            <div className="border rounded-md max-h-64 overflow-y-auto">
-              {targetNode.data.columns
-                .filter((col) => col.visible !== false)
-                .map((column, index) => (
-                  <button
-                    key={index}
-                    onClick={() => toggleField(column.name)}
-                    className={cn(
-                      'w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center justify-between transition-colors',
-                      selectedFields.has(column.name) && 'bg-blue-50'
-                    )}
-                  >
+            <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-between',
+                    !selectedPrimaryKeyField && 'text-muted-foreground'
+                  )}
+                >
+                  {selectedField ? (
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900">{column.name}</span>
-                      <span className="text-gray-500 text-xs">{column.type}</span>
-                      {column.isPrimaryKey && (
+                      <span className="font-medium">{selectedField.name}</span>
+                      <span className="text-gray-500 text-xs">({selectedField.type})</span>
+                      {selectedField.isPrimaryKey && (
                         <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded">
                           PK
                         </span>
                       )}
                     </div>
-                    {selectedFields.has(column.name) && (
-                      <Check className="w-4 h-4 text-blue-600" />
-                    )}
-                  </button>
-                ))}
-            </div>
-            {targetNode.data.columns.filter((col) => col.visible !== false).length === 0 && (
-              <div className="text-center text-gray-500 py-4 text-sm">
-                Không có field nào trong bảng này
-              </div>
-            )}
+                  ) : (
+                    'Chọn trường...'
+                  )}
+                  <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-full max-h-64 overflow-y-auto">
+                {availableFields.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-gray-500">
+                    Không có field nào trong bảng này
+                  </div>
+                ) : (
+                  availableFields.map((column, index) => (
+                    <DropdownMenuItem
+                      key={index}
+                      onClick={() => {
+                        setSelectedPrimaryKeyField(column.name);
+                        setDropdownOpen(false);
+                      }}
+                      className="cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{column.name}</span>
+                        <span className="text-gray-500 text-xs">({column.type})</span>
+                        {column.isPrimaryKey && (
+                          <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded">
+                            PK
+                          </span>
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Info */}
@@ -128,7 +149,7 @@ export function ObjectConnectionDialog({
             <p className="font-medium mb-1">Thông tin:</p>
             <ul className="list-disc list-inside space-y-1 text-xs">
               <li>Field <strong>{sourceFieldName}</strong> từ bảng nguồn sẽ là Foreign Key (FK)</li>
-              <li>Field mới <strong>{fieldName || '...'}</strong> sẽ chứa các trường được chọn làm Composite Primary Key</li>
+              <li>Field mới <strong>{fieldName || '...'}</strong> sẽ tham chiếu đến field <strong>{selectedPrimaryKeyField || '...'}</strong> làm Primary Key</li>
             </ul>
           </div>
 
@@ -139,7 +160,7 @@ export function ObjectConnectionDialog({
             </Button>
             <Button
               onClick={handleConfirm}
-              disabled={!fieldName.trim() || selectedFields.size === 0}
+              disabled={!fieldName.trim() || !selectedPrimaryKeyField}
             >
               Tạo
             </Button>
