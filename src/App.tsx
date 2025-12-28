@@ -404,6 +404,55 @@ function App() {
     );
   }, []);
 
+  const handleFieldVisibilityToggle = useCallback((nodeId: string, fieldIndex: number, newVisibility: boolean) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return;
+
+    const field = node.data.columns[fieldIndex];
+    
+    // Nếu field này là FK và có edge kết nối đến object field, thì cũng ẩn object field đó
+    if (field.isForeignKey) {
+      // Tìm edge từ field FK này đến object field
+      const connectedEdges = edges.filter(
+        (edge) =>
+          edge.source === nodeId &&
+          edge.sourceHandle === field.name &&
+          edge.data?.objectFieldName // Edge có objectFieldName nghĩa là kết nối đến object field
+      );
+
+      // Ẩn/hiện các object field được kết nối
+      connectedEdges.forEach((edge) => {
+        const targetNode = nodes.find((n) => n.id === edge.target);
+        if (targetNode) {
+          const objectFieldIndex = targetNode.data.columns.findIndex(
+            (col) => col.name === edge.data?.objectFieldName && col.type === 'object'
+          );
+          
+          if (objectFieldIndex !== -1) {
+            // Cập nhật visibility của object field
+            setNodes((nds) =>
+              nds.map((n) =>
+                n.id === edge.target
+                  ? {
+                      ...n,
+                      data: {
+                        ...n.data,
+                        columns: n.data.columns.map((col, idx) =>
+                          idx === objectFieldIndex
+                            ? { ...col, visible: newVisibility }
+                            : col
+                        ),
+                      },
+                    }
+                  : n
+              )
+            );
+          }
+        }
+      });
+    }
+  }, [nodes, edges]);
+
   const handleObjectConnectionConfirm = useCallback(
     (fieldName: string, primaryKeyFieldName: string) => {
       if (!pendingObjectConnection) return;
@@ -528,6 +577,7 @@ function App() {
         onNodesReorder={handleNodesReorder}
         onFieldReorder={handleFieldReorder}
         onFieldRename={handleFieldRename}
+        onFieldVisibilityToggle={handleFieldVisibilityToggle}
       />
 
       {/* Main Content */}

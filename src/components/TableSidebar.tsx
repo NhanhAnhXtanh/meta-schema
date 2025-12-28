@@ -25,6 +25,7 @@ interface TableSidebarProps {
   onNodesReorder: (newOrder: Node<TableNodeData>[]) => void;
   onFieldReorder: (nodeId: string, oldIndex: number, newIndex: number) => void;
   onFieldRename: (nodeId: string, fieldIndex: number, oldName: string, newName: string) => void;
+  onFieldVisibilityToggle?: (nodeId: string, fieldIndex: number, newVisibility: boolean) => void;
 }
 
 const COLOR_OPTIONS = [
@@ -71,6 +72,7 @@ export function TableSidebar({
   onNodesReorder,
   onFieldReorder,
   onFieldRename,
+  onFieldVisibilityToggle,
 }: TableSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -151,12 +153,20 @@ export function TableSidebar({
     const node = nodes.find(n => n.id === nodeId);
     if (!node) return;
 
+    const field = node.data.columns[fieldIndex];
+    const newVisibility = field.visible === false ? true : false;
+    
     const newColumns = [...node.data.columns];
     newColumns[fieldIndex] = {
       ...newColumns[fieldIndex],
-      visible: newColumns[fieldIndex].visible === false ? true : false,
+      visible: newVisibility,
     };
     onNodeUpdate(nodeId, { columns: newColumns });
+    
+    // Gọi callback để xử lý logic ẩn object field nếu cần
+    if (onFieldVisibilityToggle) {
+      onFieldVisibilityToggle(nodeId, fieldIndex, newVisibility);
+    }
   };
 
   const handleAddField = (nodeId: string) => {
@@ -455,7 +465,6 @@ export function TableSidebar({
                               checked={column.visible !== false}
                               onChange={() => handleFieldVisibilityToggle(node.id, idx)}
                               className="w-4 h-4 cursor-pointer"
-                              disabled={isObjectField}
                             />
                             
                             {/* Field name - editable directly, disabled for object */}
