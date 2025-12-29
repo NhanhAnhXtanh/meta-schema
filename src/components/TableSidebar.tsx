@@ -126,15 +126,11 @@ export function TableSidebar({
     return tree;
   }, [visibleNodes, edges]);
 
-  // Tìm root nodes (không phải child của ai)
+  // Simplification: Root nodes are visible nodes that are NOT targets of any edge
   const rootNodes = useMemo(() => {
-    const childIds = new Set<string>();
-    Object.values(nodeTree).forEach(children => {
-      children.forEach(childId => childIds.add(childId));
-    });
-
+    const childIds = new Set(edges.map(e => e.target));
     return visibleNodes.filter(node => !childIds.has(node.id));
-  }, [visibleNodes, nodeTree]);
+  }, [visibleNodes, edges]);
 
   const filteredNodes = useMemo(() => {
     if (!searchQuery.trim()) return rootNodes;
@@ -1123,7 +1119,7 @@ export function TableSidebar({
                                       })}
 
                                       <button
-                                        onClick={() => handleAddField(nestedLinkedTable.id)}
+                                        onClick={() => window.dispatchEvent(new CustomEvent('addField', { detail: { nodeId: nestedLinkedTable.id } }))}
                                         className="w-full mt-2 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-blue-600/20 hover:to-blue-700/20 rounded-md flex items-center justify-center gap-2 border border-dashed border-gray-700 hover:border-blue-500/50 transition-all duration-200"
                                       >
                                         <Plus className="w-3.5 h-3.5" />
@@ -1138,7 +1134,7 @@ export function TableSidebar({
 
                           {/* Add field button cho nested table */}
                           <button
-                            onClick={() => handleAddField(linkedTable.id)}
+                            onClick={() => window.dispatchEvent(new CustomEvent('addField', { detail: { nodeId: linkedTable.id } }))}
                             className="w-full mt-2 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-blue-600/20 hover:to-blue-700/20 rounded-md flex items-center justify-center gap-2 border border-dashed border-gray-700 hover:border-blue-500/50 transition-all duration-200"
                           >
                             <Plus className="w-3.5 h-3.5" />
@@ -1153,7 +1149,7 @@ export function TableSidebar({
 
               {/* Add field button */}
               <button
-                onClick={() => handleAddField(node.id)}
+                onClick={() => window.dispatchEvent(new CustomEvent('addField', { detail: { nodeId: node.id } }))}
                 className="w-full mt-3 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-blue-600/20 hover:to-blue-700/20 rounded-md flex items-center justify-center gap-2 border border-dashed border-gray-700 hover:border-blue-500/50 transition-all duration-200"
               >
                 <Plus className="w-3.5 h-3.5" />
