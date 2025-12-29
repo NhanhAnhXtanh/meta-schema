@@ -94,7 +94,8 @@ export function SidebarField({
                     "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-200",
                     isDragging && "opacity-50",
                     isDragOver && "border-blue-500 bg-blue-50",
-                    field.isVirtual && "bg-green-50 hover:bg-green-100"
+                    field.isVirtual === true && "bg-green-50 hover:bg-green-100",
+                    field.isVirtual !== true && field.type !== 'object' && "bg-gray-100 hover:bg-gray-150"
                 )}
             >
                 {/* Expansion Toggle */}
@@ -122,14 +123,17 @@ export function SidebarField({
                     <Input
                         value={field.name || ''}
                         onChange={(e) => {
-                            dispatch(updateField({ nodeId, fieldIndex: index, updates: { name: e.target.value } }));
+                            // Only allow editing for virtual fields
+                            if (field.isVirtual === true || field.type === 'object') {
+                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { name: e.target.value } }));
+                            }
                         }}
                         placeholder="Field Name"
-                        disabled={!field.isVirtual && field.type !== 'object'}
+                        disabled={field.isVirtual !== true && field.type !== 'object'}
                         className={cn(
                             "h-7 flex-1 text-xs bg-transparent border-0 text-gray-900 font-bold font-mono px-1 focus:bg-white focus:border-gray-500 focus:px-2 rounded placeholder:text-gray-400",
                             field.visible === false && "line-through text-gray-500",
-                            (!field.isVirtual && field.type !== 'object') && "cursor-not-allowed disabled:opacity-100 decoration-none"
+                            (field.isVirtual !== true && field.type !== 'object') && "cursor-not-allowed disabled:opacity-100"
                         )}
                     />
                     {!hasNestedFields && field.isVirtual && linkedTableName && (
@@ -160,93 +164,68 @@ export function SidebarField({
                     )}
                 </div>
 
-                <div className="flex items-center gap-1.5 ml-2">
-                    <span className="text-[10px] text-gray-900 font-bold font-mono tracking-tighter max-w-[50px] overflow-hidden text-ellipsis mr-1">
-                        {targetNode ? targetNode.data.label : field.type}
-                    </span>
+                {/* Only show controls for virtual/object fields */}
+                {(field.isVirtual === true || field.type === 'object') && (
+                    <>
+                        <div className="flex items-center gap-1.5 ml-2">
+                            <span className="text-[10px] text-gray-900 font-bold font-mono tracking-tighter max-w-[50px] overflow-hidden text-ellipsis mr-1">
+                                {targetNode ? targetNode.data.label : field.type}
+                            </span>
 
-                    {/* Type Selector (Simplified) */}
-                    <div className="relative">
+                            {/* Type Selector for Virtual Fields */}
+                            <div className="relative">
+                                <button
+                                    className="px-1.5 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1 font-bold bg-blue-100 border-blue-300 text-blue-900 cursor-default"
+                                >
+                                    {field.isVirtual === true ? 'Array' : 'Object'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Key Toggles for Virtual Fields */}
                         <button
-                            onClick={() => !(field.isVirtual || field.type === 'object') && setTypeDropdownOpen(!typeDropdownOpen)}
-                            disabled={field.isVirtual || field.type === 'object'}
+                            onClick={() => {
+                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { isNotNull: !field.isNotNull } }));
+                            }}
                             className={cn(
-                                "px-1.5 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1 font-bold",
-                                (field.isVirtual || field.type === 'object')
-                                    ? "bg-blue-100 border-blue-300 text-blue-900 cursor-default"
-                                    : "bg-gray-200 border-transparent text-gray-900 hover:bg-gray-300 cursor-pointer"
+                                "h-7 w-7 flex items-center justify-center rounded transition-colors font-bold text-[10px]",
+                                field.isNotNull ? "text-red-500 bg-red-50" : "text-gray-400 hover:text-gray-600"
                             )}
-                        >
-                            {field.isVirtual ? 'Array' : (field.type === 'object' ? 'Object' : field.type)}
-                            {!(field.isVirtual || field.type === 'object') && <ChevronDown className="w-2.5 h-2.5 opacity-50" />}
-                        </button>
+                            title="Not Null"
+                        >N</button>
 
-                        {typeDropdownOpen && !(field.isVirtual || field.type === 'object') && (
-                            <>
-                                <div className="fixed inset-0 z-40" onClick={() => setTypeDropdownOpen(false)} />
-                                <div className="absolute right-0 top-6 z-50 w-48 bg-white border border-gray-200 shadow-xl rounded-md py-1 max-h-60 overflow-y-auto">
-                                    <div className="px-2 py-1.5 border-b border-gray-100 mb-1 sticky top-0 bg-white">
-                                        <Input
-                                            value={typeSearchQuery}
-                                            onChange={(e) => setTypeSearchQuery(e.target.value)}
-                                            placeholder="Search type..."
-                                            className="h-7 text-xs bg-gray-50 border-gray-200"
-                                            autoFocus
-                                        />
-                                    </div>
-                                    {filteredDataTypes.map(type => (
-                                        <button
-                                            key={type}
-                                            onClick={() => {
-                                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { type } }));
-                                                setTypeDropdownOpen(false);
-                                            }}
-                                            className="w-full text-left px-3 py-1.5 text-xs text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
-                                        >
-                                            <span className={cn("w-1.5 h-1.5 rounded-full", type === field.type ? "bg-blue-500" : "bg-transparent")} />
-                                            {type}
-                                        </button>
-                                    ))}
-                                </div>
-                            </>
-                        )}
+                        <button
+                            onClick={() => {
+                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }));
+                            }}
+                            className={cn(
+                                "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                                field.isPrimaryKey ? "text-orange-500 bg-orange-50" : "text-gray-400 hover:text-gray-600"
+                            )}
+                            title="Primary Key"
+                        ><Key className="w-4 h-4" /></button>
+
+                        <button
+                            onClick={() => {
+                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }));
+                            }}
+                            className={cn(
+                                "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                                field.isForeignKey ? "text-blue-500 bg-blue-50" : "text-gray-400 hover:text-gray-600"
+                            )}
+                            title="Foreign Key"
+                        ><Link2 className="w-4 h-4" /></button>
+                    </>
+                )}
+
+                {/* For base fields, just show type as read-only text */}
+                {field.isVirtual !== true && field.type !== 'object' && (
+                    <div className="flex items-center gap-1.5 ml-2">
+                        <span className="text-[10px] text-gray-600 font-bold font-mono px-2 py-1 bg-gray-100 rounded border border-gray-300">
+                            {field.type}
+                        </span>
                     </div>
-                </div>
-
-                {/* Key Toggles */}
-                {/* Key Toggles */}
-                <button
-                    onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isNotNull: !field.isNotNull } }))}
-                    disabled={!field.isVirtual && field.type !== 'object'}
-                    className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded transition-colors font-bold text-[10px]",
-                        field.isNotNull ? "text-red-500 bg-red-50" : "text-gray-400 hover:text-gray-600",
-                        (!field.isVirtual && field.type !== 'object') && "opacity-50 cursor-not-allowed"
-                    )}
-                    title="Not Null"
-                >N</button>
-
-                <button
-                    onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }))}
-                    disabled={!field.isVirtual && field.type !== 'object'}
-                    className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                        field.isPrimaryKey ? "text-orange-500 bg-orange-50" : "text-gray-400 hover:text-gray-600",
-                        (field.isVirtual || field.type === 'object') ? "hover:text-gray-600" : "cursor-not-allowed opacity-60"
-                    )}
-                    title="Primary Key"
-                ><Key className="w-4 h-4" /></button>
-
-                <button
-                    onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }))}
-                    disabled={!field.isVirtual && field.type !== 'object'}
-                    className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                        field.isForeignKey ? "text-blue-500 bg-blue-50" : "text-gray-400 hover:text-gray-600",
-                        (field.isVirtual || field.type === 'object') ? "hover:text-gray-600" : "cursor-not-allowed opacity-60"
-                    )}
-                    title="Foreign Key"
-                ><Link2 className="w-4 h-4" /></button>
+                )}
 
                 {(field.isVirtual || field.type === 'object') && (
                     <>
