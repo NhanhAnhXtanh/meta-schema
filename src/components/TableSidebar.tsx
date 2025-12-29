@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { NestedFieldsList } from './NestedFieldsList';
 
 interface TableSidebarProps {
   nodes: Node<TableNodeData>[];
@@ -26,6 +27,7 @@ interface TableSidebarProps {
   onFieldReorder: (nodeId: string, oldIndex: number, newIndex: number) => void;
   onFieldRename: (nodeId: string, fieldIndex: number, oldName: string, newName: string) => void;
   onFieldVisibilityToggle?: (nodeId: string, fieldIndex: number, newVisibility: boolean) => void;
+  onFieldDelete?: (nodeId: string, fieldIndex: number) => void;
   visibleNodeIds: Set<string>; // Chỉ hiển thị các bảng visible
   edges: any[]; // Để xây dựng tree structure
 }
@@ -104,12 +106,12 @@ export function TableSidebar({
   // Build tree structure dựa trên edges
   const nodeTree = useMemo(() => {
     const tree: Record<string, string[]> = {}; // parentId -> childIds[]
-    
+
     // Tìm parent-child relationships từ edges
     edges.forEach(edge => {
       const sourceNode = visibleNodes.find(n => n.id === edge.source);
       const targetNode = visibleNodes.find(n => n.id === edge.target);
-      
+
       if (sourceNode && targetNode) {
         // Target node là child của source node
         if (!tree[edge.source]) {
@@ -120,7 +122,7 @@ export function TableSidebar({
         }
       }
     });
-    
+
     return tree;
   }, [visibleNodes, edges]);
 
@@ -130,7 +132,7 @@ export function TableSidebar({
     Object.values(nodeTree).forEach(children => {
       children.forEach(childId => childIds.add(childId));
     });
-    
+
     return visibleNodes.filter(node => !childIds.has(node.id));
   }, [visibleNodes, nodeTree]);
 
@@ -201,14 +203,14 @@ export function TableSidebar({
 
     const field = node.data.columns[fieldIndex];
     const newVisibility = field.visible === false ? true : false;
-    
+
     const newColumns = [...node.data.columns];
     newColumns[fieldIndex] = {
       ...newColumns[fieldIndex],
       visible: newVisibility,
     };
     onNodeUpdate(nodeId, { columns: newColumns });
-    
+
     // Gọi callback để xử lý logic ẩn object field nếu cần
     if (onFieldVisibilityToggle) {
       onFieldVisibilityToggle(nodeId, fieldIndex, newVisibility);
@@ -229,12 +231,12 @@ export function TableSidebar({
       const node = nodes.find(n => n.id === nodeId);
       if (!node) return;
       const field = node.data.columns[fieldIndex];
-      
+
       // Không cho phép xóa field object
       if (field.type === 'object') {
         return;
       }
-      
+
       const newColumns = node.data.columns.filter((_, idx) => idx !== fieldIndex);
       onNodeUpdate(nodeId, { columns: newColumns });
     }
@@ -360,29 +362,29 @@ export function TableSidebar({
           onDragOver={(e) => handleDragOver(e, node.id)}
           onDragLeave={handleDragLeave}
           onDrop={(e) => handleDrop(e, node.id)}
-                  className={cn(
-                    'group hover:bg-gray-800/60 transition-all duration-200 rounded-lg mx-2 mb-1',
-                    isSelected && 'bg-gray-800/80 shadow-lg border border-gray-700/50',
-                    isDragging && 'opacity-50',
-                    isDragOver && 'border-t-2 border-blue-500'
-                  )}
-                  style={{ paddingLeft: `${depth === 0 ? 8 : depth * 12 + 8}px` }}
-                >
-                  <div className="flex items-center relative">
-                    {/* Color bar với gradient - chỉ hiển thị cho root nodes */}
-                    {depth === 0 && (
-                      <div
-                        className="w-1.5 h-12 rounded-r-full shadow-sm"
-                        style={{ 
-                          background: `linear-gradient(180deg, ${nodeColor} 0%, ${nodeColor}dd 100%)`
-                        }}
-                      />
-                    )}
-                    {/* Line xanh dọc cho nested tables */}
-                    {depth > 0 && (
-                      <div className="w-0.5 h-12 bg-green-500/60 rounded-r-full mr-1" />
-                    )}
-            
+          className={cn(
+            'group hover:bg-gray-800/60 transition-all duration-200 rounded-lg mx-2 mb-1',
+            isSelected && 'bg-gray-800/80 shadow-lg border border-gray-700/50',
+            isDragging && 'opacity-50',
+            isDragOver && 'border-t-2 border-blue-500'
+          )}
+          style={{ paddingLeft: `${depth === 0 ? 8 : depth * 12 + 8}px` }}
+        >
+          <div className="flex items-center relative">
+            {/* Color bar với gradient - chỉ hiển thị cho root nodes */}
+            {depth === 0 && (
+              <div
+                className="w-1.5 h-12 rounded-r-full shadow-sm"
+                style={{
+                  background: `linear-gradient(180deg, ${nodeColor} 0%, ${nodeColor}dd 100%)`
+                }}
+              />
+            )}
+            {/* Line xanh dọc cho nested tables */}
+            {depth > 0 && (
+              <div className="w-0.5 h-12 bg-green-500/60 rounded-r-full mr-1" />
+            )}
+
             {/* Expand/Collapse */}
             <button
               onClick={() => toggleExpand(node.id)}
@@ -485,236 +487,236 @@ export function TableSidebar({
                 const isObjectField = column.type === 'object';
                 // Virtual field là field mới thêm (chưa có tên hoặc tên rỗng)
                 const isVirtualField = !column.name || column.name.trim() === '';
-                
+
                 // Tìm bảng linked nếu field là virtual
                 const linkedTableId = column.isVirtual ? edges.find(
                   e => e.source === node.id && e.sourceHandle === column.name
                 )?.target : null;
                 const linkedTable = linkedTableId ? visibleNodes.find(n => n.id === linkedTableId) : null;
                 const isFieldExpanded = expandedNodes.has(`${node.id}-field-${idx}`);
-                
+
                 return (
                   <div key={idx}>
                     <div
                       draggable
-                    onDragStart={(e) => {
-                      // Chỉ cho phép drag nếu không phải từ Input
-                      const target = e.target as HTMLElement;
-                      if (target.tagName === 'INPUT' || target.closest('input')) {
-                        e.preventDefault();
-                        return;
-                      }
-                      handleFieldDragStart(e, node.id, idx);
-                    }}
-                    onDragOver={(e) => handleFieldDragOver(e, node.id, idx)}
-                    onDragLeave={handleFieldDragLeave}
-                    onDrop={(e) => handleFieldDrop(e, node.id, idx)}
-                    className={cn(
-                      "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-800/50 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-700/30",
-                      isDragging && "opacity-50",
-                      isDragOver && "border-blue-500 bg-blue-500/10",
-                      column.isVirtual && "bg-green-500/5 hover:bg-green-500/10"
-                    )}
-                  >
-                    {/* Expand button cho virtual field có link */}
-                    {column.isVirtual && linkedTable ? (
+                      onDragStart={(e) => {
+                        // Chỉ cho phép drag nếu không phải từ Input
+                        const target = e.target as HTMLElement;
+                        if (target.tagName === 'INPUT' || target.closest('input')) {
+                          e.preventDefault();
+                          return;
+                        }
+                        handleFieldDragStart(e, node.id, idx);
+                      }}
+                      onDragOver={(e) => handleFieldDragOver(e, node.id, idx)}
+                      onDragLeave={handleFieldDragLeave}
+                      onDrop={(e) => handleFieldDrop(e, node.id, idx)}
+                      className={cn(
+                        "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-800/50 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-700/30",
+                        isDragging && "opacity-50",
+                        isDragOver && "border-blue-500 bg-blue-500/10",
+                        column.isVirtual && "bg-green-500/5 hover:bg-green-500/10"
+                      )}
+                    >
+                      {/* Expand button cho virtual field có link */}
+                      {column.isVirtual && linkedTable ? (
+                        <button
+                          onClick={() => {
+                            const fieldKey = `${node.id}-field-${idx}`;
+                            setExpandedNodes((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(fieldKey)) {
+                                next.delete(fieldKey);
+                              } else {
+                                next.add(fieldKey);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="p-1 hover:bg-gray-700/50 rounded transition-colors"
+                        >
+                          {isFieldExpanded ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-green-400" />
+                          ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-green-400" />
+                          )}
+                        </button>
+                      ) : (
+                        <GripVertical className="w-3 h-3 text-gray-600 cursor-move hover:text-gray-400 transition-colors" />
+                      )}
+
+                      {/* Checkbox for visibility */}
+                      <input
+                        type="checkbox"
+                        checked={column.visible !== false}
+                        onChange={() => handleFieldVisibilityToggle(node.id, idx)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+
+                      {/* Field name - editable directly, disabled for object */}
+                      <div className="flex-1 min-w-[60px] overflow-hidden flex items-center gap-2">
+                        <Input
+                          value={column.name || ''}
+                          onChange={(e) => {
+                            if (isObjectField) return;
+                            const oldName = column.name;
+                            const newName = e.target.value;
+                            handleFieldUpdate(node.id, idx, { name: newName });
+                            if (oldName && oldName !== newName) {
+                              onFieldRename(node.id, idx, oldName, newName);
+                            }
+                          }}
+                          placeholder="Tên field"
+                          disabled={isObjectField}
+                          className={cn(
+                            "h-7 flex-1 text-xs bg-transparent border-0 text-gray-200 font-mono px-1 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
+                            column.visible === false && "line-through text-gray-600",
+                            isObjectField && "cursor-not-allowed opacity-60"
+                          )}
+                          onClick={(e) => e.stopPropagation()}
+                          onDragStart={(e) => e.preventDefault()}
+                          draggable={false}
+                        />
+                        {/* Hiển thị tên bảng linked ngay cạnh tên field */}
+                        {column.isVirtual && linkedTable && (
+                          <span className="text-xs text-green-400 font-medium px-2 py-0.5 bg-green-500/10 rounded border border-green-500/30 whitespace-nowrap">
+                            → {linkedTable.data.label}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Type dropdown - disabled for object và field có sẵn (chỉ cho phép với virtual field) */}
+                      <div className="relative">
+                        <button
+                          onClick={() => {
+                            if (!isObjectField && isVirtualField) {
+                              setTypeDropdownOpen({ nodeId: node.id, fieldIndex: idx });
+                            }
+                          }}
+                          disabled={isObjectField || !isVirtualField}
+                          className={cn(
+                            "h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]",
+                            (isObjectField || !isVirtualField) && "cursor-not-allowed opacity-60"
+                          )}
+                        >
+                          <span className="font-mono">{column.type || 'varchar'}</span>
+                          {!isObjectField && isVirtualField && <ChevronDown className="w-3 h-3" />}
+                        </button>
+
+                        {isTypeDropdownOpen && !isObjectField && isVirtualField && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={() => {
+                                setTypeDropdownOpen(null);
+                                setTypeSearchQuery('');
+                              }}
+                            />
+                            <div className="absolute left-0 top-8 z-20 bg-gray-800 border border-gray-700 rounded-md shadow-lg w-56 max-h-64 overflow-hidden">
+                              <div className="p-2 border-b border-gray-700">
+                                <Input
+                                  placeholder="Search..."
+                                  value={typeSearchQuery}
+                                  onChange={(e) => setTypeSearchQuery(e.target.value)}
+                                  className="h-7 text-xs bg-gray-700 border-gray-600 text-white"
+                                  onClick={(e) => e.stopPropagation()}
+                                  autoFocus
+                                />
+                              </div>
+                              <div className="max-h-48 overflow-y-auto">
+                                {filteredDataTypes.map((type: string) => (
+                                  <button
+                                    key={type}
+                                    onClick={() => handleTypeSelect(node.id, idx, type)}
+                                    className={cn(
+                                      "w-full px-3 py-2 text-left text-sm hover:bg-gray-700 flex items-center justify-between",
+                                      column.type === type && "bg-gray-700"
+                                    )}
+                                  >
+                                    <span className="font-mono">{type}</span>
+                                    {column.type === type && (
+                                      <Check className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* NotNull button - disabled for object */}
                       <button
                         onClick={() => {
-                          const fieldKey = `${node.id}-field-${idx}`;
-                          setExpandedNodes((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(fieldKey)) {
-                              next.delete(fieldKey);
-                            } else {
-                              next.add(fieldKey);
-                            }
-                            return next;
-                          });
-                        }}
-                        className="p-1 hover:bg-gray-700/50 rounded transition-colors"
-                      >
-                        {isFieldExpanded ? (
-                          <ChevronDown className="w-3.5 h-3.5 text-green-400" />
-                        ) : (
-                          <ChevronRight className="w-3.5 h-3.5 text-green-400" />
-                        )}
-                      </button>
-                    ) : (
-                      <GripVertical className="w-3 h-3 text-gray-600 cursor-move hover:text-gray-400 transition-colors" />
-                    )}
-                    
-                    {/* Checkbox for visibility */}
-                    <input
-                      type="checkbox"
-                      checked={column.visible !== false}
-                      onChange={() => handleFieldVisibilityToggle(node.id, idx)}
-                      className="w-4 h-4 cursor-pointer"
-                    />
-                    
-                    {/* Field name - editable directly, disabled for object */}
-                    <div className="flex-1 min-w-[60px] overflow-hidden flex items-center gap-2">
-                      <Input
-                        value={column.name || ''}
-                        onChange={(e) => {
-                          if (isObjectField) return;
-                          const oldName = column.name;
-                          const newName = e.target.value;
-                          handleFieldUpdate(node.id, idx, { name: newName });
-                          if (oldName && oldName !== newName) {
-                            onFieldRename(node.id, idx, oldName, newName);
+                          if (!isObjectField) {
+                            handleFieldUpdate(node.id, idx, { isNotNull: !column.isNotNull });
                           }
                         }}
-                        placeholder="Tên field"
                         disabled={isObjectField}
                         className={cn(
-                          "h-7 flex-1 text-xs bg-transparent border-0 text-gray-200 font-mono px-1 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
-                          column.visible === false && "line-through text-gray-600",
+                          "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
+                          column.isNotNull
+                            ? "bg-orange-500 text-white"
+                            : "bg-gray-700 text-gray-400 hover:bg-gray-600",
                           isObjectField && "cursor-not-allowed opacity-60"
                         )}
-                        onClick={(e) => e.stopPropagation()}
-                        onDragStart={(e) => e.preventDefault()}
-                        draggable={false}
-                      />
-                      {/* Hiển thị tên bảng linked ngay cạnh tên field */}
-                      {column.isVirtual && linkedTable && (
-                        <span className="text-xs text-green-400 font-medium px-2 py-0.5 bg-green-500/10 rounded border border-green-500/30 whitespace-nowrap">
-                          → {linkedTable.data.label}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Type dropdown - disabled for object và field có sẵn (chỉ cho phép với virtual field) */}
-                    <div className="relative">
+                        title="Not Null"
+                      >
+                        N
+                      </button>
+
+                      {/* PK button - disabled for object */}
                       <button
                         onClick={() => {
-                          if (!isObjectField && isVirtualField) {
-                            setTypeDropdownOpen({ nodeId: node.id, fieldIndex: idx });
+                          if (!isObjectField) {
+                            handleFieldUpdate(node.id, idx, { isPrimaryKey: !column.isPrimaryKey });
                           }
                         }}
-                        disabled={isObjectField || !isVirtualField}
+                        disabled={isObjectField}
                         className={cn(
-                          "h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]",
-                          (isObjectField || !isVirtualField) && "cursor-not-allowed opacity-60"
+                          "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                          column.isPrimaryKey
+                            ? "text-orange-400"
+                            : "text-gray-400 hover:text-gray-300",
+                          isObjectField && "cursor-not-allowed opacity-60"
                         )}
+                        title="Primary Key"
                       >
-                        <span className="font-mono">{column.type || 'varchar'}</span>
-                        {!isObjectField && isVirtualField && <ChevronDown className="w-3 h-3" />}
+                        <Key className="w-4 h-4" />
                       </button>
-                      
-                      {isTypeDropdownOpen && !isObjectField && isVirtualField && (
-                        <>
-                          <div
-                            className="fixed inset-0 z-10"
-                            onClick={() => {
-                              setTypeDropdownOpen(null);
-                              setTypeSearchQuery('');
-                            }}
-                          />
-                          <div className="absolute left-0 top-8 z-20 bg-gray-800 border border-gray-700 rounded-md shadow-lg w-56 max-h-64 overflow-hidden">
-                            <div className="p-2 border-b border-gray-700">
-                              <Input
-                                placeholder="Search..."
-                                value={typeSearchQuery}
-                                onChange={(e) => setTypeSearchQuery(e.target.value)}
-                                className="h-7 text-xs bg-gray-700 border-gray-600 text-white"
-                                onClick={(e) => e.stopPropagation()}
-                                autoFocus
-                              />
-                            </div>
-                            <div className="max-h-48 overflow-y-auto">
-                              {filteredDataTypes.map((type: string) => (
-                                <button
-                                  key={type}
-                                  onClick={() => handleTypeSelect(node.id, idx, type)}
-                                  className={cn(
-                                    "w-full px-3 py-2 text-left text-sm hover:bg-gray-700 flex items-center justify-between",
-                                    column.type === type && "bg-gray-700"
-                                  )}
-                                >
-                                  <span className="font-mono">{type}</span>
-                                  {column.type === type && (
-                                    <Check className="w-4 h-4" />
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    
-                    {/* NotNull button - disabled for object */}
-                    <button
-                      onClick={() => {
-                        if (!isObjectField) {
-                          handleFieldUpdate(node.id, idx, { isNotNull: !column.isNotNull });
-                        }
-                      }}
-                      disabled={isObjectField}
-                      className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
-                        column.isNotNull 
-                          ? "bg-orange-500 text-white" 
-                          : "bg-gray-700 text-gray-400 hover:bg-gray-600",
-                        isObjectField && "cursor-not-allowed opacity-60"
-                      )}
-                      title="Not Null"
-                    >
-                      N
-                    </button>
-                    
-                    {/* PK button - disabled for object */}
-                    <button
-                      onClick={() => {
-                        if (!isObjectField) {
-                          handleFieldUpdate(node.id, idx, { isPrimaryKey: !column.isPrimaryKey });
-                        }
-                      }}
-                      disabled={isObjectField}
-                      className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                        column.isPrimaryKey 
-                          ? "text-orange-400" 
-                          : "text-gray-400 hover:text-gray-300",
-                        isObjectField && "cursor-not-allowed opacity-60"
-                      )}
-                      title="Primary Key"
-                    >
-                      <Key className="w-4 h-4" />
-                    </button>
-                    
-                    {/* FK button - disabled for object */}
-                    <button
-                      onClick={() => {
-                        if (!isObjectField) {
-                          handleFieldUpdate(node.id, idx, { isForeignKey: !column.isForeignKey });
-                        }
-                      }}
-                      disabled={isObjectField}
-                      className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                        column.isForeignKey 
-                          ? "text-blue-400" 
-                          : "text-gray-400 hover:text-gray-300",
-                        isObjectField && "cursor-not-allowed opacity-60"
-                      )}
-                      title="Foreign Key"
-                    >
-                      <Link2 className="w-4 h-4" />
-                    </button>
-                    
-                    {/* Delete button - disabled for object */}
-                    {!isObjectField && (
+
+                      {/* FK button - disabled for object */}
                       <button
-                        onClick={() => handleDeleteField(node.id, idx)}
-                        className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover/field:opacity-100"
-                        title="Xóa field"
+                        onClick={() => {
+                          if (!isObjectField) {
+                            handleFieldUpdate(node.id, idx, { isForeignKey: !column.isForeignKey });
+                          }
+                        }}
+                        disabled={isObjectField}
+                        className={cn(
+                          "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                          column.isForeignKey
+                            ? "text-blue-400"
+                            : "text-gray-400 hover:text-gray-300",
+                          isObjectField && "cursor-not-allowed opacity-60"
+                        )}
+                        title="Foreign Key"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Link2 className="w-4 h-4" />
                       </button>
-                    )}
+
+                      {/* Delete button - disabled for object */}
+                      {!isObjectField && (
+                        <button
+                          onClick={() => handleDeleteField(node.id, idx)}
+                          className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover/field:opacity-100"
+                          title="Xóa field"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                    
+
                     {/* Hiển thị chỉ fields của bảng linked - không có header bảng */}
                     {column.isVirtual && linkedTable && isFieldExpanded && (
                       <div className="ml-4 mt-1.5 border-l-2 border-green-500/60 pl-2">
@@ -726,388 +728,414 @@ export function TableSidebar({
                             const isLinkedDragOver = dragOverFieldIndex === linkedIdx && draggedField?.nodeId === linkedTable.id;
                             const isLinkedObjectField = linkedColumn.type === 'object';
                             const isLinkedVirtualField = !linkedColumn.name || linkedColumn.name.trim() === '';
-                            
+
                             // Tìm bảng linked nếu field nested cũng là virtual
                             const nestedLinkedTableId = linkedColumn.isVirtual ? edges.find(
                               e => e.source === linkedTable.id && e.sourceHandle === linkedColumn.name
                             )?.target : null;
                             const nestedLinkedTable = nestedLinkedTableId ? visibleNodes.find(n => n.id === nestedLinkedTableId) : null;
                             const isNestedFieldExpanded = expandedNodes.has(`${linkedTable.id}-field-${linkedIdx}`);
-                            
+
                             return (
                               <div key={linkedIdx}>
-                              <div
-                                draggable
-                                onDragStart={(e) => {
-                                  const target = e.target as HTMLElement;
-                                  if (target.tagName === 'INPUT' || target.closest('input')) {
-                                    e.preventDefault();
-                                    return;
-                                  }
-                                  handleFieldDragStart(e, linkedTable.id, linkedIdx);
-                                }}
-                                onDragOver={(e) => handleFieldDragOver(e, linkedTable.id, linkedIdx)}
-                                onDragLeave={handleFieldDragLeave}
-                                onDrop={(e) => handleFieldDrop(e, linkedTable.id, linkedIdx)}
-                                className={cn(
-                                  "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-800/50 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-700/30",
-                                  isLinkedDragging && "opacity-50",
-                                  isLinkedDragOver && "border-blue-500 bg-blue-500/10"
-                                )}
-                              >
-                                {/* Expand button cho nested virtual field có link */}
-                                {linkedColumn.isVirtual && nestedLinkedTable ? (
-                                  <button
-                                    onClick={() => {
-                                      const nestedFieldKey = `${linkedTable.id}-field-${linkedIdx}`;
-                                      setExpandedNodes((prev) => {
-                                        const next = new Set(prev);
-                                        if (next.has(nestedFieldKey)) {
-                                          next.delete(nestedFieldKey);
-                                        } else {
-                                          next.add(nestedFieldKey);
-                                        }
-                                        return next;
-                                      });
-                                    }}
-                                    className="p-1 hover:bg-gray-700/50 rounded transition-colors"
-                                  >
-                                    {isNestedFieldExpanded ? (
-                                      <ChevronDown className="w-3.5 h-3.5 text-green-400" />
-                                    ) : (
-                                      <ChevronRight className="w-3.5 h-3.5 text-green-400" />
-                                    )}
-                                  </button>
-                                ) : (
-                                  <GripVertical className="w-3 h-3 text-gray-600 cursor-move hover:text-gray-400 transition-colors" />
-                                )}
-                                
-                                {/* Checkbox */}
-                                <input
-                                  type="checkbox"
-                                  checked={linkedColumn.visible !== false}
-                                  onChange={() => handleFieldVisibilityToggle(linkedTable.id, linkedIdx)}
-                                  className="w-4 h-4 cursor-pointer"
-                                />
-                                
-                                {/* Field name */}
-                                <div className="flex-1 min-w-[60px] overflow-hidden flex items-center gap-2">
-                                  <Input
-                                    value={linkedColumn.name || ''}
-                                    onChange={(e) => {
-                                      if (isLinkedObjectField) return;
-                                      const oldName = linkedColumn.name;
-                                      const newName = e.target.value;
-                                      handleFieldUpdate(linkedTable.id, linkedIdx, { name: newName });
-                                      if (oldName && oldName !== newName) {
-                                        onFieldRename(linkedTable.id, linkedIdx, oldName, newName);
-                                      }
-                                    }}
-                                    placeholder="Tên field"
-                                    disabled={isLinkedObjectField}
-                                    className={cn(
-                                      "h-7 flex-1 text-xs bg-transparent border-0 text-gray-200 font-mono px-1 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
-                                      linkedColumn.visible === false && "line-through text-gray-600",
-                                      isLinkedObjectField && "cursor-not-allowed opacity-60"
-                                    )}
-                                    onClick={(e) => e.stopPropagation()}
-                                    onDragStart={(e) => e.preventDefault()}
-                                    draggable={false}
-                                  />
-                                  {/* Hiển thị tên bảng linked ngay cạnh tên field */}
-                                  {linkedColumn.isVirtual && nestedLinkedTable && (
-                                    <span className="text-xs text-green-400 font-medium px-2 py-0.5 bg-green-500/10 rounded border border-green-500/30 whitespace-nowrap">
-                                      → {nestedLinkedTable.data.label}
-                                    </span>
-                                  )}
-                                </div>
-                                
-                                {/* Type dropdown */}
-                                <div className="relative">
-                                  <button
-                                    onClick={() => {
-                                      if (!isLinkedObjectField && isLinkedVirtualField) {
-                                        setTypeDropdownOpen({ nodeId: linkedTable.id, fieldIndex: linkedIdx });
-                                      }
-                                    }}
-                                    disabled={isLinkedObjectField || !isLinkedVirtualField}
-                                    className={cn(
-                                      "h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]",
-                                      (isLinkedObjectField || !isLinkedVirtualField) && "cursor-not-allowed opacity-60"
-                                    )}
-                                  >
-                                    <span className="font-mono">{linkedColumn.type || 'varchar'}</span>
-                                    {!isLinkedObjectField && isLinkedVirtualField && <ChevronDown className="w-3 h-3" />}
-                                  </button>
-                                </div>
-                                
-                                {/* NotNull button */}
-                                <button
-                                  onClick={() => {
-                                    if (!isLinkedObjectField) {
-                                      handleFieldUpdate(linkedTable.id, linkedIdx, { isNotNull: !linkedColumn.isNotNull });
+                                <div
+                                  draggable
+                                  onDragStart={(e) => {
+                                    const target = e.target as HTMLElement;
+                                    if (target.tagName === 'INPUT' || target.closest('input')) {
+                                      e.preventDefault();
+                                      return;
                                     }
+                                    handleFieldDragStart(e, linkedTable.id, linkedIdx);
                                   }}
-                                  disabled={isLinkedObjectField}
+                                  onDragOver={(e) => handleFieldDragOver(e, linkedTable.id, linkedIdx)}
+                                  onDragLeave={handleFieldDragLeave}
+                                  onDrop={(e) => handleFieldDrop(e, linkedTable.id, linkedIdx)}
                                   className={cn(
-                                    "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
-                                    linkedColumn.isNotNull 
-                                      ? "bg-orange-500 text-white" 
-                                      : "bg-gray-700 text-gray-400 hover:bg-gray-600",
-                                    isLinkedObjectField && "cursor-not-allowed opacity-60"
+                                    "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-800/50 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-700/30",
+                                    isLinkedDragging && "opacity-50",
+                                    isLinkedDragOver && "border-blue-500 bg-blue-500/10"
                                   )}
-                                  title="Not Null"
                                 >
-                                  N
-                                </button>
-                                
-                                {/* PK button */}
-                                <button
-                                  onClick={() => {
-                                    if (!isLinkedObjectField) {
-                                      handleFieldUpdate(linkedTable.id, linkedIdx, { isPrimaryKey: !linkedColumn.isPrimaryKey });
-                                    }
-                                  }}
-                                  disabled={isLinkedObjectField}
-                                  className={cn(
-                                    "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                    linkedColumn.isPrimaryKey 
-                                      ? "text-orange-400" 
-                                      : "text-gray-400 hover:text-gray-300",
-                                    isLinkedObjectField && "cursor-not-allowed opacity-60"
-                                  )}
-                                  title="Primary Key"
-                                >
-                                  <Key className="w-4 h-4" />
-                                </button>
-                                
-                                {/* FK button */}
-                                <button
-                                  onClick={() => {
-                                    if (!isLinkedObjectField) {
-                                      handleFieldUpdate(linkedTable.id, linkedIdx, { isForeignKey: !linkedColumn.isForeignKey });
-                                    }
-                                  }}
-                                  disabled={isLinkedObjectField}
-                                  className={cn(
-                                    "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                    linkedColumn.isForeignKey 
-                                      ? "text-blue-400" 
-                                      : "text-gray-400 hover:text-gray-300",
-                                    isLinkedObjectField && "cursor-not-allowed opacity-60"
-                                  )}
-                                  title="Foreign Key"
-                                >
-                                  <Link2 className="w-4 h-4" />
-                                </button>
-                                
-                                {/* Delete button */}
-                                {!isLinkedObjectField && (
-                                  <button
-                                    onClick={() => handleDeleteField(linkedTable.id, linkedIdx)}
-                                    className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover/field:opacity-100"
-                                    title="Xóa field"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                              
-                              {/* Hiển thị fields của nested linked table (recursive) */}
-                              {linkedColumn.isVirtual && nestedLinkedTable && isNestedFieldExpanded && (
-                                <div className="ml-4 mt-1.5 border-l-2 border-green-500/60 pl-2">
-                                  <div className="space-y-1.5 pt-1">
-                                    {nestedLinkedTable.data.columns.map((nestedColumn: TableNodeData['columns'][0], nestedIdx: number) => {
-                                      const isNestedObjectField = nestedColumn.type === 'object';
-                                      const isNestedVirtualField = !nestedColumn.name || nestedColumn.name.trim() === '';
-                                      
-                                      // Recursive: Tìm bảng linked của nested field
-                                      const deepLinkedTableId = nestedColumn.isVirtual ? edges.find(
-                                        e => e.source === nestedLinkedTable.id && e.sourceHandle === nestedColumn.name
-                                      )?.target : null;
-                                      const deepLinkedTable = deepLinkedTableId ? visibleNodes.find(n => n.id === deepLinkedTableId) : null;
-                                      const isDeepFieldExpanded = expandedNodes.has(`${nestedLinkedTable.id}-field-${nestedIdx}`);
-                                      
-                                      return (
-                                        <div key={nestedIdx}>
-                                          <div className={cn(
-                                            "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-800/50 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-700/30",
-                                            nestedColumn.isVirtual && "bg-green-500/5 hover:bg-green-500/10"
-                                          )}>
-                                            {/* Expand button cho deep nested virtual field */}
-                                            {nestedColumn.isVirtual && deepLinkedTable ? (
-                                              <button
-                                                onClick={() => {
-                                                  const deepFieldKey = `${nestedLinkedTable.id}-field-${nestedIdx}`;
-                                                  setExpandedNodes((prev) => {
-                                                    const next = new Set(prev);
-                                                    if (next.has(deepFieldKey)) {
-                                                      next.delete(deepFieldKey);
-                                                    } else {
-                                                      next.add(deepFieldKey);
-                                                    }
-                                                    return next;
-                                                  });
-                                                }}
-                                                className="p-1 hover:bg-gray-700/50 rounded transition-colors"
-                                              >
-                                                {isDeepFieldExpanded ? (
-                                                  <ChevronDown className="w-3.5 h-3.5 text-green-400" />
-                                                ) : (
-                                                  <ChevronRight className="w-3.5 h-3.5 text-green-400" />
-                                                )}
-                                              </button>
-                                            ) : (
-                                              <GripVertical className="w-3 h-3 text-gray-600 cursor-move hover:text-gray-400 transition-colors" />
-                                            )}
-                                            
-                                            <input
-                                              type="checkbox"
-                                              checked={nestedColumn.visible !== false}
-                                              onChange={() => handleFieldVisibilityToggle(nestedLinkedTable.id, nestedIdx)}
-                                              className="w-4 h-4 cursor-pointer"
-                                            />
-                                            
-                                            <div className="flex-1 min-w-[60px] overflow-hidden flex items-center gap-2">
-                                              <Input
-                                                value={nestedColumn.name || ''}
-                                                onChange={(e) => {
-                                                  if (isNestedObjectField) return;
-                                                  const oldName = nestedColumn.name;
-                                                  const newName = e.target.value;
-                                                  handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { name: newName });
-                                                  if (oldName && oldName !== newName) {
-                                                    onFieldRename(nestedLinkedTable.id, nestedIdx, oldName, newName);
-                                                  }
-                                                }}
-                                                placeholder="Tên field"
-                                                disabled={isNestedObjectField}
-                                                className={cn(
-                                                  "h-7 flex-1 text-xs bg-transparent border-0 text-gray-200 font-mono px-1 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
-                                                  nestedColumn.visible === false && "line-through text-gray-600",
-                                                  isNestedObjectField && "cursor-not-allowed opacity-60"
-                                                )}
-                                                onClick={(e) => e.stopPropagation()}
-                                                onDragStart={(e) => e.preventDefault()}
-                                                draggable={false}
-                                              />
-                                              {nestedColumn.isVirtual && deepLinkedTable && (
-                                                <span className="text-xs text-green-400 font-medium px-2 py-0.5 bg-green-500/10 rounded border border-green-500/30 whitespace-nowrap">
-                                                  → {deepLinkedTable.data.label}
-                                                </span>
-                                              )}
-                                            </div>
-                                            
-                                            <div className="relative">
-                                              <button
-                                                onClick={() => {
-                                                  if (!isNestedObjectField && isNestedVirtualField) {
-                                                    setTypeDropdownOpen({ nodeId: nestedLinkedTable.id, fieldIndex: nestedIdx });
-                                                  }
-                                                }}
-                                                disabled={isNestedObjectField || !isNestedVirtualField}
-                                                className={cn(
-                                                  "h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]",
-                                                  (isNestedObjectField || !isNestedVirtualField) && "cursor-not-allowed opacity-60"
-                                                )}
-                                              >
-                                                <span className="font-mono">{nestedColumn.type || 'varchar'}</span>
-                                                {!isNestedObjectField && isNestedVirtualField && <ChevronDown className="w-3 h-3" />}
-                                              </button>
-                                            </div>
-                                            
-                                            <button
-                                              onClick={() => {
-                                                if (!isNestedObjectField) {
-                                                  handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { isNotNull: !nestedColumn.isNotNull });
-                                                }
-                                              }}
-                                              disabled={isNestedObjectField}
-                                              className={cn(
-                                                "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
-                                                nestedColumn.isNotNull 
-                                                  ? "bg-orange-500 text-white" 
-                                                  : "bg-gray-700 text-gray-400 hover:bg-gray-600",
-                                                isNestedObjectField && "cursor-not-allowed opacity-60"
-                                              )}
-                                              title="Not Null"
-                                            >
-                                              N
-                                            </button>
-                                            
-                                            <button
-                                              onClick={() => {
-                                                if (!isNestedObjectField) {
-                                                  handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { isPrimaryKey: !nestedColumn.isPrimaryKey });
-                                                }
-                                              }}
-                                              disabled={isNestedObjectField}
-                                              className={cn(
-                                                "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                                nestedColumn.isPrimaryKey 
-                                                  ? "text-orange-400" 
-                                                  : "text-gray-400 hover:text-gray-300",
-                                                isNestedObjectField && "cursor-not-allowed opacity-60"
-                                              )}
-                                              title="Primary Key"
-                                            >
-                                              <Key className="w-4 h-4" />
-                                            </button>
-                                            
-                                            <button
-                                              onClick={() => {
-                                                if (!isNestedObjectField) {
-                                                  handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { isForeignKey: !nestedColumn.isForeignKey });
-                                                }
-                                              }}
-                                              disabled={isNestedObjectField}
-                                              className={cn(
-                                                "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                                nestedColumn.isForeignKey 
-                                                  ? "text-blue-400" 
-                                                  : "text-gray-400 hover:text-gray-300",
-                                                isNestedObjectField && "cursor-not-allowed opacity-60"
-                                              )}
-                                              title="Foreign Key"
-                                            >
-                                              <Link2 className="w-4 h-4" />
-                                            </button>
-                                            
-                                            {!isNestedObjectField && (
-                                              <button
-                                                onClick={() => handleDeleteField(nestedLinkedTable.id, nestedIdx)}
-                                                className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover/field:opacity-100"
-                                                title="Xóa field"
-                                              >
-                                                <Trash2 className="w-3.5 h-3.5" />
-                                              </button>
-                                            )}
-                                          </div>
-                                          
-                                          {/* Recursive: Hiển thị fields của deep nested table */}
-                                          {nestedColumn.isVirtual && deepLinkedTable && isDeepFieldExpanded && (
-                                            <div className="ml-4 mt-1.5 border-l-2 border-green-500/60 pl-2">
-                                              {/* Có thể tiếp tục recursive ở đây nếu cần */}
-                                            </div>
-                                          )}
-                                        </div>
-                                      );
-                                    })}
-                                    
+                                  {/* Expand button cho nested virtual field có link */}
+                                  {linkedColumn.isVirtual && nestedLinkedTable ? (
                                     <button
-                                      onClick={() => handleAddField(nestedLinkedTable.id)}
-                                      className="w-full mt-2 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-blue-600/20 hover:to-blue-700/20 rounded-md flex items-center justify-center gap-2 border border-dashed border-gray-700 hover:border-blue-500/50 transition-all duration-200"
+                                      onClick={() => {
+                                        const nestedFieldKey = `${linkedTable.id}-field-${linkedIdx}`;
+                                        setExpandedNodes((prev) => {
+                                          const next = new Set(prev);
+                                          if (next.has(nestedFieldKey)) {
+                                            next.delete(nestedFieldKey);
+                                          } else {
+                                            next.add(nestedFieldKey);
+                                          }
+                                          return next;
+                                        });
+                                      }}
+                                      className="p-1 hover:bg-gray-700/50 rounded transition-colors"
                                     >
-                                      <Plus className="w-3.5 h-3.5" />
-                                      Thêm trường
+                                      {isNestedFieldExpanded ? (
+                                        <ChevronDown className="w-3.5 h-3.5 text-green-400" />
+                                      ) : (
+                                        <ChevronRight className="w-3.5 h-3.5 text-green-400" />
+                                      )}
+                                    </button>
+                                  ) : (
+                                    <GripVertical className="w-3 h-3 text-gray-600 cursor-move hover:text-gray-400 transition-colors" />
+                                  )}
+
+                                  {/* Checkbox */}
+                                  <input
+                                    type="checkbox"
+                                    checked={linkedColumn.visible !== false}
+                                    onChange={() => handleFieldVisibilityToggle(linkedTable.id, linkedIdx)}
+                                    className="w-4 h-4 cursor-pointer"
+                                  />
+
+                                  {/* Field name */}
+                                  <div className="flex-1 min-w-[60px] overflow-hidden flex items-center gap-2">
+                                    <Input
+                                      value={linkedColumn.name || ''}
+                                      onChange={(e) => {
+                                        if (isLinkedObjectField) return;
+                                        const oldName = linkedColumn.name;
+                                        const newName = e.target.value;
+                                        handleFieldUpdate(linkedTable.id, linkedIdx, { name: newName });
+                                        if (oldName && oldName !== newName) {
+                                          onFieldRename(linkedTable.id, linkedIdx, oldName, newName);
+                                        }
+                                      }}
+                                      placeholder="Tên field"
+                                      disabled={isLinkedObjectField}
+                                      className={cn(
+                                        "h-7 flex-1 text-xs bg-transparent border-0 text-gray-200 font-mono px-1 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
+                                        linkedColumn.visible === false && "line-through text-gray-600",
+                                        isLinkedObjectField && "cursor-not-allowed opacity-60"
+                                      )}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onDragStart={(e) => e.preventDefault()}
+                                      draggable={false}
+                                    />
+                                    {/* Hiển thị tên bảng linked ngay cạnh tên field */}
+                                    {linkedColumn.isVirtual && nestedLinkedTable && (
+                                      <span className="text-xs text-green-400 font-medium px-2 py-0.5 bg-green-500/10 rounded border border-green-500/30 whitespace-nowrap">
+                                        → {nestedLinkedTable.data.label}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Type dropdown */}
+                                  <div className="relative">
+                                    <button
+                                      onClick={() => {
+                                        if (!isLinkedObjectField && isLinkedVirtualField) {
+                                          setTypeDropdownOpen({ nodeId: linkedTable.id, fieldIndex: linkedIdx });
+                                        }
+                                      }}
+                                      disabled={isLinkedObjectField || !isLinkedVirtualField}
+                                      className={cn(
+                                        "h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]",
+                                        (isLinkedObjectField || !isLinkedVirtualField) && "cursor-not-allowed opacity-60"
+                                      )}
+                                    >
+                                      <span className="font-mono">{linkedColumn.type || 'varchar'}</span>
+                                      {!isLinkedObjectField && isLinkedVirtualField && <ChevronDown className="w-3 h-3" />}
                                     </button>
                                   </div>
+
+                                  {/* NotNull button */}
+                                  <button
+                                    onClick={() => {
+                                      if (!isLinkedObjectField) {
+                                        handleFieldUpdate(linkedTable.id, linkedIdx, { isNotNull: !linkedColumn.isNotNull });
+                                      }
+                                    }}
+                                    disabled={isLinkedObjectField}
+                                    className={cn(
+                                      "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
+                                      linkedColumn.isNotNull
+                                        ? "bg-orange-500 text-white"
+                                        : "bg-gray-700 text-gray-400 hover:bg-gray-600",
+                                      isLinkedObjectField && "cursor-not-allowed opacity-60"
+                                    )}
+                                    title="Not Null"
+                                  >
+                                    N
+                                  </button>
+
+                                  {/* PK button */}
+                                  <button
+                                    onClick={() => {
+                                      if (!isLinkedObjectField) {
+                                        handleFieldUpdate(linkedTable.id, linkedIdx, { isPrimaryKey: !linkedColumn.isPrimaryKey });
+                                      }
+                                    }}
+                                    disabled={isLinkedObjectField}
+                                    className={cn(
+                                      "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                                      linkedColumn.isPrimaryKey
+                                        ? "text-orange-400"
+                                        : "text-gray-400 hover:text-gray-300",
+                                      isLinkedObjectField && "cursor-not-allowed opacity-60"
+                                    )}
+                                    title="Primary Key"
+                                  >
+                                    <Key className="w-4 h-4" />
+                                  </button>
+
+                                  {/* FK button */}
+                                  <button
+                                    onClick={() => {
+                                      if (!isLinkedObjectField) {
+                                        handleFieldUpdate(linkedTable.id, linkedIdx, { isForeignKey: !linkedColumn.isForeignKey });
+                                      }
+                                    }}
+                                    disabled={isLinkedObjectField}
+                                    className={cn(
+                                      "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                                      linkedColumn.isForeignKey
+                                        ? "text-blue-400"
+                                        : "text-gray-400 hover:text-gray-300",
+                                      isLinkedObjectField && "cursor-not-allowed opacity-60"
+                                    )}
+                                    title="Foreign Key"
+                                  >
+                                    <Link2 className="w-4 h-4" />
+                                  </button>
+
+                                  {/* Delete button */}
+                                  {!isLinkedObjectField && (
+                                    <button
+                                      onClick={() => handleDeleteField(linkedTable.id, linkedIdx)}
+                                      className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover/field:opacity-100"
+                                      title="Xóa field"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
                                 </div>
-                              )}
+
+                                {/* Hiển thị fields của nested linked table (recursive) */}
+                                {linkedColumn.isVirtual && nestedLinkedTable && isNestedFieldExpanded && (
+                                  <div className="ml-4 mt-1.5 border-l-2 border-green-500/60 pl-2">
+                                    <div className="space-y-1.5 pt-1">
+                                      {nestedLinkedTable.data.columns.map((nestedColumn: TableNodeData['columns'][0], nestedIdx: number) => {
+                                        const isNestedObjectField = nestedColumn.type === 'object';
+                                        const isNestedVirtualField = !nestedColumn.name || nestedColumn.name.trim() === '';
+
+                                        // Recursive: Tìm bảng linked của nested field
+                                        const deepLinkedTableId = nestedColumn.isVirtual ? edges.find(
+                                          e => e.source === nestedLinkedTable.id && e.sourceHandle === nestedColumn.name
+                                        )?.target : null;
+                                        const deepLinkedTable = deepLinkedTableId ? visibleNodes.find(n => n.id === deepLinkedTableId) : null;
+                                        const isDeepFieldExpanded = expandedNodes.has(`${nestedLinkedTable.id}-field-${nestedIdx}`);
+
+                                        return (
+                                          <div key={nestedIdx}>
+                                            <div className={cn(
+                                              "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-800/50 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-700/30",
+                                              nestedColumn.isVirtual && "bg-green-500/5 hover:bg-green-500/10"
+                                            )}>
+                                              {/* Expand button cho deep nested virtual field */}
+                                              {nestedColumn.isVirtual && deepLinkedTable ? (
+                                                <button
+                                                  onClick={() => {
+                                                    const deepFieldKey = `${nestedLinkedTable.id}-field-${nestedIdx}`;
+                                                    setExpandedNodes((prev) => {
+                                                      const next = new Set(prev);
+                                                      if (next.has(deepFieldKey)) {
+                                                        next.delete(deepFieldKey);
+                                                      } else {
+                                                        next.add(deepFieldKey);
+                                                      }
+                                                      return next;
+                                                    });
+                                                  }}
+                                                  className="p-1 hover:bg-gray-700/50 rounded transition-colors"
+                                                >
+                                                  {isDeepFieldExpanded ? (
+                                                    <ChevronDown className="w-3.5 h-3.5 text-green-400" />
+                                                  ) : (
+                                                    <ChevronRight className="w-3.5 h-3.5 text-green-400" />
+                                                  )}
+                                                </button>
+                                              ) : (
+                                                <GripVertical className="w-3 h-3 text-gray-600 cursor-move hover:text-gray-400 transition-colors" />
+                                              )}
+
+                                              <input
+                                                type="checkbox"
+                                                checked={nestedColumn.visible !== false}
+                                                onChange={() => handleFieldVisibilityToggle(nestedLinkedTable.id, nestedIdx)}
+                                                className="w-4 h-4 cursor-pointer"
+                                              />
+
+                                              <div className="flex-1 min-w-[60px] overflow-hidden flex items-center gap-2">
+                                                <Input
+                                                  value={nestedColumn.name || ''}
+                                                  onChange={(e) => {
+                                                    if (isNestedObjectField) return;
+                                                    const oldName = nestedColumn.name;
+                                                    const newName = e.target.value;
+                                                    handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { name: newName });
+                                                    if (oldName && oldName !== newName) {
+                                                      onFieldRename(nestedLinkedTable.id, nestedIdx, oldName, newName);
+                                                    }
+                                                  }}
+                                                  placeholder="Tên field"
+                                                  disabled={isNestedObjectField}
+                                                  className={cn(
+                                                    "h-7 flex-1 text-xs bg-transparent border-0 text-gray-200 font-mono px-1 focus:bg-gray-700 focus:border-gray-600 focus:px-2 rounded",
+                                                    nestedColumn.visible === false && "line-through text-gray-600",
+                                                    isNestedObjectField && "cursor-not-allowed opacity-60"
+                                                  )}
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  onDragStart={(e) => e.preventDefault()}
+                                                  draggable={false}
+                                                />
+                                                {nestedColumn.isVirtual && deepLinkedTable && (
+                                                  <span className="text-xs text-green-400 font-medium px-2 py-0.5 bg-green-500/10 rounded border border-green-500/30 whitespace-nowrap">
+                                                    → {deepLinkedTable.data.label}
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              <div className="relative">
+                                                <button
+                                                  onClick={() => {
+                                                    if (!isNestedObjectField && isNestedVirtualField) {
+                                                      setTypeDropdownOpen({ nodeId: nestedLinkedTable.id, fieldIndex: nestedIdx });
+                                                    }
+                                                  }}
+                                                  disabled={isNestedObjectField || !isNestedVirtualField}
+                                                  className={cn(
+                                                    "h-7 px-2 text-xs bg-gray-700 border border-gray-600 text-gray-300 rounded flex items-center gap-1 hover:bg-gray-600 min-w-[80px]",
+                                                    (isNestedObjectField || !isNestedVirtualField) && "cursor-not-allowed opacity-60"
+                                                  )}
+                                                >
+                                                  <span className="font-mono">{nestedColumn.type || 'varchar'}</span>
+                                                  {!isNestedObjectField && isNestedVirtualField && <ChevronDown className="w-3 h-3" />}
+                                                </button>
+                                              </div>
+
+                                              <button
+                                                onClick={() => {
+                                                  if (!isNestedObjectField) {
+                                                    handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { isNotNull: !nestedColumn.isNotNull });
+                                                  }
+                                                }}
+                                                disabled={isNestedObjectField}
+                                                className={cn(
+                                                  "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
+                                                  nestedColumn.isNotNull
+                                                    ? "bg-orange-500 text-white"
+                                                    : "bg-gray-700 text-gray-400 hover:bg-gray-600",
+                                                  isNestedObjectField && "cursor-not-allowed opacity-60"
+                                                )}
+                                                title="Not Null"
+                                              >
+                                                N
+                                              </button>
+
+                                              <button
+                                                onClick={() => {
+                                                  if (!isNestedObjectField) {
+                                                    handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { isPrimaryKey: !nestedColumn.isPrimaryKey });
+                                                  }
+                                                }}
+                                                disabled={isNestedObjectField}
+                                                className={cn(
+                                                  "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                                                  nestedColumn.isPrimaryKey
+                                                    ? "text-orange-400"
+                                                    : "text-gray-400 hover:text-gray-300",
+                                                  isNestedObjectField && "cursor-not-allowed opacity-60"
+                                                )}
+                                                title="Primary Key"
+                                              >
+                                                <Key className="w-4 h-4" />
+                                              </button>
+
+                                              <button
+                                                onClick={() => {
+                                                  if (!isNestedObjectField) {
+                                                    handleFieldUpdate(nestedLinkedTable.id, nestedIdx, { isForeignKey: !nestedColumn.isForeignKey });
+                                                  }
+                                                }}
+                                                disabled={isNestedObjectField}
+                                                className={cn(
+                                                  "h-7 w-7 flex items-center justify-center rounded transition-colors",
+                                                  nestedColumn.isForeignKey
+                                                    ? "text-blue-400"
+                                                    : "text-gray-400 hover:text-gray-300",
+                                                  isNestedObjectField && "cursor-not-allowed opacity-60"
+                                                )}
+                                                title="Foreign Key"
+                                              >
+                                                <Link2 className="w-4 h-4" />
+                                              </button>
+
+                                              {!isNestedObjectField && (
+                                                <button
+                                                  onClick={() => handleDeleteField(nestedLinkedTable.id, nestedIdx)}
+                                                  className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover/field:opacity-100"
+                                                  title="Xóa field"
+                                                >
+                                                  <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                              )}
+                                            </div>
+
+                                            {/* RECURSIVE: Render unlimited nested levels */}
+                                            {nestedColumn.isVirtual && deepLinkedTable && isDeepFieldExpanded && (
+                                              <div className="ml-4 mt-1.5 border-l-2 border-green-500/60 pl-2">
+                                                <NestedFieldsList
+                                                  tableNode={deepLinkedTable}
+                                                  visibleNodes={visibleNodes}
+                                                  edges={edges}
+                                                  expandedNodes={expandedNodes}
+                                                  setExpandedNodes={setExpandedNodes}
+                                                  typeDropdownOpen={typeDropdownOpen}
+                                                  setTypeDropdownOpen={setTypeDropdownOpen}
+                                                  typeSearchQuery={typeSearchQuery}
+                                                  setTypeSearchQuery={setTypeSearchQuery}
+                                                  draggedField={draggedField}
+                                                  setDraggedField={setDraggedField}
+                                                  dragOverFieldIndex={dragOverFieldIndex}
+                                                  setDragOverFieldIndex={setDragOverFieldIndex}
+                                                  handleFieldUpdate={handleFieldUpdate}
+                                                  handleFieldVisibilityToggle={handleFieldVisibilityToggle}
+                                                  handleDeleteField={handleDeleteField}
+                                                  handleAddField={handleAddField}
+                                                  handleFieldDragStart={handleFieldDragStart}
+                                                  handleFieldDragOver={handleFieldDragOver}
+                                                  handleFieldDragLeave={handleFieldDragLeave}
+                                                  handleFieldDrop={handleFieldDrop}
+                                                  handleTypeSelect={handleTypeSelect}
+                                                  filteredDataTypes={filteredDataTypes}
+                                                  onFieldRename={onFieldRename}
+                                                  depth={3}
+                                                />
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+
+                                      <button
+                                        onClick={() => handleAddField(nestedLinkedTable.id)}
+                                        className="w-full mt-2 px-3 py-2 text-xs font-medium text-gray-300 hover:text-white hover:bg-gradient-to-r hover:from-blue-600/20 hover:to-blue-700/20 rounded-md flex items-center justify-center gap-2 border border-dashed border-gray-700 hover:border-blue-500/50 transition-all duration-200"
+                                      >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        Thêm trường
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             );
                           })}
-                          
+
                           {/* Add field button cho nested table */}
                           <button
                             onClick={() => handleAddField(linkedTable.id)}
@@ -1122,7 +1150,7 @@ export function TableSidebar({
                   </div>
                 );
               })}
-              
+
               {/* Add field button */}
               <button
                 onClick={() => handleAddField(node.id)}
@@ -1148,7 +1176,7 @@ export function TableSidebar({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      
+
       const newWidth = e.clientX;
       // Giới hạn width từ 200px đến 800px
       if (newWidth >= 200 && newWidth <= 800) {
@@ -1176,7 +1204,7 @@ export function TableSidebar({
   }, [isResizing]);
 
   return (
-    <div 
+    <div
       ref={sidebarRef}
       className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 text-white flex flex-col h-full border-r border-gray-700/50 relative shadow-2xl"
       style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '800px' }}
@@ -1242,7 +1270,7 @@ export function TableSidebar({
                       className="w-1 h-12"
                       style={{ backgroundColor: nodeColor }}
                     />
-                    
+
                     {/* Expand/Collapse */}
                     <button
                       onClick={() => toggleExpand(node.id)}
@@ -1347,7 +1375,7 @@ export function TableSidebar({
                         const isObjectField = column.type === 'object';
                         // Virtual field là field mới thêm (chưa có tên hoặc tên rỗng)
                         const isVirtualField = !column.name || column.name.trim() === '';
-                        
+
                         return (
                           <div
                             key={idx}
@@ -1372,7 +1400,7 @@ export function TableSidebar({
                           >
                             {/* Drag handle */}
                             <GripVertical className="w-3 h-3 text-gray-600 cursor-move" />
-                            
+
                             {/* Checkbox for visibility */}
                             <input
                               type="checkbox"
@@ -1380,7 +1408,7 @@ export function TableSidebar({
                               onChange={() => handleFieldVisibilityToggle(node.id, idx)}
                               className="w-4 h-4 cursor-pointer"
                             />
-                            
+
                             {/* Field name - editable directly, disabled for object */}
                             <div className="flex-1 min-w-[60px] overflow-hidden">
                               <Input
@@ -1406,7 +1434,7 @@ export function TableSidebar({
                                 draggable={false}
                               />
                             </div>
-                            
+
                             {/* Type dropdown - disabled for object và field có sẵn (chỉ cho phép với virtual field) */}
                             <div className="relative">
                               <button
@@ -1424,7 +1452,7 @@ export function TableSidebar({
                                 <span className="font-mono">{column.type || 'varchar'}</span>
                                 {!isObjectField && isVirtualField && <ChevronDown className="w-3 h-3" />}
                               </button>
-                              
+
                               {isTypeDropdownOpen && !isObjectField && isVirtualField && (
                                 <>
                                   <div
@@ -1466,7 +1494,7 @@ export function TableSidebar({
                                 </>
                               )}
                             </div>
-                            
+
                             {/* NotNull button - disabled for object */}
                             <button
                               onClick={() => {
@@ -1477,8 +1505,8 @@ export function TableSidebar({
                               disabled={isObjectField}
                               className={cn(
                                 "h-7 w-7 flex items-center justify-center rounded text-xs font-semibold transition-colors",
-                                column.isNotNull 
-                                  ? "bg-orange-500 text-white" 
+                                column.isNotNull
+                                  ? "bg-orange-500 text-white"
                                   : "bg-gray-700 text-gray-400 hover:bg-gray-600",
                                 isObjectField && "cursor-not-allowed opacity-60"
                               )}
@@ -1486,7 +1514,7 @@ export function TableSidebar({
                             >
                               N
                             </button>
-                            
+
                             {/* PK button - disabled for object */}
                             <button
                               onClick={() => {
@@ -1497,8 +1525,8 @@ export function TableSidebar({
                               disabled={isObjectField}
                               className={cn(
                                 "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                column.isPrimaryKey 
-                                  ? "text-orange-400" 
+                                column.isPrimaryKey
+                                  ? "text-orange-400"
                                   : "text-gray-400 hover:text-gray-300",
                                 isObjectField && "cursor-not-allowed opacity-60"
                               )}
@@ -1506,7 +1534,7 @@ export function TableSidebar({
                             >
                               <Key className="w-4 h-4" />
                             </button>
-                            
+
                             {/* FK button - disabled for object */}
                             <button
                               onClick={() => {
@@ -1517,8 +1545,8 @@ export function TableSidebar({
                               disabled={isObjectField}
                               className={cn(
                                 "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                column.isForeignKey 
-                                  ? "text-blue-400" 
+                                column.isForeignKey
+                                  ? "text-blue-400"
                                   : "text-gray-400 hover:text-gray-300",
                                 isObjectField && "cursor-not-allowed opacity-60"
                               )}
@@ -1526,7 +1554,7 @@ export function TableSidebar({
                             >
                               <Link2 className="w-4 h-4" />
                             </button>
-                            
+
                             {/* Delete button - disabled for object */}
                             {!isObjectField && (
                               <button
@@ -1540,7 +1568,7 @@ export function TableSidebar({
                           </div>
                         );
                       })}
-                      
+
                       {/* Add field button */}
                       <button
                         onClick={() => handleAddField(node.id)}
