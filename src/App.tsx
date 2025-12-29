@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -27,8 +27,10 @@ import { TableNode, TableNodeData } from './components/TableNode';
 import { TableSidebar } from './components/TableSidebar';
 import { RelationshipEdge, RelationshipEdgeData } from './components/RelationshipEdge';
 import { ObjectConnectionDialog } from './components/ObjectConnectionDialog';
+import { LinkFieldDialog } from './components/LinkFieldDialog';
 import { Plus, Trash2 } from 'lucide-react';
 import { EdgeTypes } from '@xyflow/react';
+import { cn } from '@/lib/utils';
 
 const nodeTypes: NodeTypes = {
   table: TableNode,
@@ -58,8 +60,6 @@ const initialNodes: Node<TableNodeData>[] = [
         { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
         { name: 'name', type: 'varchar', visible: true },
         { name: 'description', type: 'varchar', visible: true },
-        { name: 'warehouse_id', type: 'uuid', isForeignKey: true, visible: true },
-        { name: 'supplier_id', type: 'uuid', isForeignKey: true, visible: true },
         { name: 'price', type: 'money', visible: true },
         { name: 'quantity', type: 'int4', visible: true },
       ],
@@ -69,7 +69,7 @@ const initialNodes: Node<TableNodeData>[] = [
   {
     id: '2',
     type: 'table',
-    position: { x: 350, y: -100 },
+    position: { x: 400, y: -150 },
     data: {
       label: 'Warehouses',
       columns: [
@@ -84,49 +84,103 @@ const initialNodes: Node<TableNodeData>[] = [
   {
     id: '3',
     type: 'table',
-    position: { x: 350, y: 200 },
+    position: { x: 400, y: 100 },
     data: {
       label: 'Suppliers',
       columns: [
         { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
         { name: 'name', type: 'varchar', visible: true },
-        { name: 'description', type: 'varchar', visible: true },
+        { name: 'contact', type: 'varchar', visible: true },
         { name: 'country', type: 'varchar', visible: true },
       ],
       color: COLOR_OPTIONS[2], // Vàng
     },
   },
+  {
+    id: '4',
+    type: 'table',
+    position: { x: 800, y: -200 },
+    data: {
+      label: 'Categories',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+        { name: 'name', type: 'varchar', visible: true },
+        { name: 'description', type: 'text', visible: true },
+      ],
+      color: COLOR_OPTIONS[3], // Xanh dương
+    },
+  },
+  {
+    id: '5',
+    type: 'table',
+    position: { x: 800, y: -50 },
+    data: {
+      label: 'Orders',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+        { name: 'order_date', type: 'timestamp', visible: true },
+        { name: 'total_amount', type: 'money', visible: true },
+        { name: 'status', type: 'varchar', visible: true },
+      ],
+      color: COLOR_OPTIONS[4], // Đỏ
+    },
+  },
+  {
+    id: '6',
+    type: 'table',
+    position: { x: 800, y: 150 },
+    data: {
+      label: 'Customers',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+        { name: 'name', type: 'varchar', visible: true },
+        { name: 'email', type: 'varchar', visible: true },
+        { name: 'phone', type: 'varchar', visible: true },
+      ],
+      color: COLOR_OPTIONS[5], // Xanh ngọc
+    },
+  },
+  {
+    id: '7',
+    type: 'table',
+    position: { x: 400, y: 350 },
+    data: {
+      label: 'Reviews',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+        { name: 'rating', type: 'int', visible: true },
+        { name: 'comment', type: 'text', visible: true },
+        { name: 'created_at', type: 'timestamp', visible: true },
+      ],
+      color: COLOR_OPTIONS[0], // Xanh lá
+    },
+  },
+  {
+    id: '8',
+    type: 'table',
+    position: { x: 800, y: 350 },
+    data: {
+      label: 'Inventory',
+      columns: [
+        { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+        { name: 'stock_quantity', type: 'int', visible: true },
+        { name: 'last_updated', type: 'timestamp', visible: true },
+      ],
+      color: COLOR_OPTIONS[1], // Tím
+    },
+  },
 ];
 
-const initialEdges: Edge<RelationshipEdgeData>[] = [
-  {
-    id: 'products-warehouses',
-    source: '1',
-    target: '2',
-    sourceHandle: 'warehouse_id',
-    targetHandle: 'id',
-    type: 'relationship',
-    data: {
-      relationshipType: 'n-1',
-    },
-  },
-  {
-    id: 'products-suppliers',
-    source: '1',
-    target: '3',
-    sourceHandle: 'supplier_id',
-    targetHandle: 'id',
-    type: 'relationship',
-    data: {
-      relationshipType: 'n-1',
-    },
-  },
-];
+const initialEdges: Edge<RelationshipEdgeData>[] = [];
 
 function App() {
   const [nodes, setNodes] = useState<Node<TableNodeData>[]>(initialNodes);
   const [edges, setEdges] = useState<Edge<RelationshipEdgeData>[]>(initialEdges);
+  const [visibleNodeIds, setVisibleNodeIds] = useState<Set<string>>(new Set(['1'])); // Chỉ hiển thị bảng root
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [linkFieldDialogOpen, setLinkFieldDialogOpen] = useState(false);
+  const [selectedSourceNodeId, setSelectedSourceNodeId] = useState<string | null>(null);
+  const [isSplitView, setIsSplitView] = useState(false);
   const [tableName, setTableName] = useState('');
   const [columns, setColumns] = useState<Array<{ name: string; type: string; isPrimaryKey?: boolean; isForeignKey?: boolean }>>([
     { name: '', type: 'VARCHAR(255)' },
@@ -139,6 +193,27 @@ function App() {
     return colors;
   });
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
+  
+  // Handler để mở dialog link field
+  const handleAddField = useCallback((nodeId: string) => {
+    setSelectedSourceNodeId(nodeId);
+    setLinkFieldDialogOpen(true);
+  }, []);
+  
+  // Listen custom event từ TableNode để thêm field
+  useEffect(() => {
+    const handleAddFieldEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ nodeId: string }>;
+      if (customEvent.detail?.nodeId) {
+        handleAddField(customEvent.detail.nodeId);
+      }
+    };
+    
+    window.addEventListener('addField', handleAddFieldEvent);
+    return () => {
+      window.removeEventListener('addField', handleAddFieldEvent);
+    };
+  }, [handleAddField]);
   
   // Object connection dialog state
   const [objectDialogOpen, setObjectDialogOpen] = useState(false);
@@ -314,6 +389,11 @@ function App() {
   const selectedNodeId = useMemo(() => {
     return selectedNode?.id;
   }, [selectedNode]);
+  
+  // Chỉ hiển thị các node visible
+  const visibleNodes = useMemo(() => {
+    return nodes.filter(node => visibleNodeIds.has(node.id));
+  }, [nodes, visibleNodeIds]);
 
   const handleNodeSelect = useCallback((nodeId: string) => {
     setNodes((nds) =>
@@ -537,6 +617,78 @@ function App() {
     handleFieldRename(nodeId, fieldIndex, field.name, ''); // Trigger rename để cleanup edges
   }, [nodes, edges, handleFieldRename]);
 
+  const handleLinkFieldConfirm = useCallback(
+    (targetNodeId: string, sourcePK: string, targetFK: string, newFieldName: string) => {
+      if (!selectedSourceNodeId) return;
+
+      const sourceNode = nodes.find((n) => n.id === selectedSourceNodeId);
+      const targetNode = nodes.find((n) => n.id === targetNodeId);
+      if (!sourceNode || !targetNode) return;
+
+      // Thêm field mới vào bảng nguồn với isPrimaryKey = true
+      const newField = {
+        name: newFieldName,
+        type: 'varchar',
+        visible: true,
+        isVirtual: true,
+        isPrimaryKey: true, // Field virtual là PK ở bảng nguồn
+        linkedPrimaryKeyField: sourcePK, // Lưu field PK mà field này link tới
+      };
+
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === selectedSourceNodeId) {
+            // Thêm field mới vào bảng nguồn
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                columns: [...node.data.columns, newField],
+              },
+            };
+          } else if (node.id === targetNodeId) {
+            // Đánh dấu targetFK là FK trong bảng đích
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                columns: node.data.columns.map((col) =>
+                  col.name === targetFK
+                    ? { ...col, isForeignKey: true }
+                    : col
+                ),
+              },
+            };
+          }
+          return node;
+        })
+      );
+
+      // Tạo edge từ field mới (PK) đến FK của bảng đích
+      const edgeId = `${selectedSourceNodeId}-${newFieldName}-to-${targetNodeId}-${targetFK}`;
+      const newEdge: Edge<RelationshipEdgeData> = {
+        id: edgeId,
+        source: selectedSourceNodeId,
+        target: targetNodeId,
+        sourceHandle: newFieldName,
+        targetHandle: targetFK,
+        type: 'relationship',
+        data: {
+          relationshipType: '1-n',
+        },
+      };
+
+      setEdges((eds) => [...eds, newEdge]);
+
+      // Hiển thị bảng đích
+      setVisibleNodeIds((prev) => new Set([...prev, targetNodeId]));
+
+      // Reset state
+      setSelectedSourceNodeId(null);
+    },
+    [selectedSourceNodeId, nodes]
+  );
+
   const handleObjectConnectionConfirm = useCallback(
     (fieldName: string, primaryKeyFieldName: string) => {
       if (!pendingObjectConnection) return;
@@ -663,6 +815,8 @@ function App() {
         onFieldRename={handleFieldRename}
         onFieldVisibilityToggle={handleFieldVisibilityToggle}
         onFieldDelete={handleFieldDelete}
+        visibleNodeIds={visibleNodeIds}
+        edges={edges}
       />
 
       {/* Main Content */}
@@ -670,6 +824,12 @@ function App() {
         <div className="border-b bg-background p-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">ERD Diagram Builder</h1>
           <div className="flex gap-2">
+            <Button
+              variant={isSplitView ? "default" : "outline"}
+              onClick={() => setIsSplitView(!isSplitView)}
+            >
+              {isSplitView ? "Single View" : "Split View"}
+            </Button>
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -772,38 +932,85 @@ function App() {
             )}
           </div>
         </div>
-        <div className="flex-1">
-          <ReactFlow
-            nodes={nodes}
-            edges={edges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onEdgeUpdate={onEdgeUpdate}
-            onInit={onInit}
-            isValidConnection={isValidConnection}
-            edgesUpdatable={true}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            fitView
-            className="bg-gray-50"
-            connectionMode="loose"
-            defaultEdgeOptions={{
-              type: 'relationship',
-              animated: false,
-            }}
-            connectionLineStyle={{ stroke: '#9ca3af', strokeWidth: 2 }}
-            connectionLineType="smoothstep"
-            connectionRadius={20}
-            snapToGrid={false}
-            deleteKeyCode={null}
-          >
-            <Background variant="dots" gap={12} size={1} />
-            <Controls />
-            <MiniMap />
-          </ReactFlow>
+        <div className="flex-1 flex">
+          {/* Main Board */}
+          <div className={cn("flex-1", isSplitView && "border-r")}>
+            <ReactFlow
+              nodes={visibleNodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onEdgeUpdate={onEdgeUpdate}
+              onInit={onInit}
+              isValidConnection={isValidConnection}
+              edgesUpdatable={true}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              fitView
+              className="bg-gray-50"
+              connectionMode="loose"
+              defaultEdgeOptions={{
+                type: 'relationship',
+                animated: false,
+              }}
+              connectionLineStyle={{ stroke: '#9ca3af', strokeWidth: 2 }}
+              connectionLineType="smoothstep"
+              connectionRadius={20}
+              snapToGrid={false}
+              deleteKeyCode={null}
+            >
+              <Background variant="dots" gap={12} size={1} />
+              <Controls />
+              <MiniMap />
+            </ReactFlow>
+          </div>
+
+          {/* Split Board */}
+          {isSplitView && (
+            <div className="flex-1">
+              <ReactFlow
+                nodes={visibleNodes}
+                edges={edges}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onEdgeUpdate={onEdgeUpdate}
+                isValidConnection={isValidConnection}
+                edgesUpdatable={true}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                fitView
+                className="bg-gray-100"
+                connectionMode="loose"
+                defaultEdgeOptions={{
+                  type: 'relationship',
+                  animated: false,
+                }}
+                connectionLineStyle={{ stroke: '#9ca3af', strokeWidth: 2 }}
+                connectionLineType="smoothstep"
+                connectionRadius={20}
+                snapToGrid={false}
+                deleteKeyCode={null}
+              >
+                <Background variant="dots" gap={12} size={1} />
+                <Controls />
+                <MiniMap />
+              </ReactFlow>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Link Field Dialog */}
+      <LinkFieldDialog
+        open={linkFieldDialogOpen}
+        onOpenChange={setLinkFieldDialogOpen}
+        sourceNode={nodes.find((n) => n.id === selectedSourceNodeId)}
+        allNodes={nodes}
+        visibleNodeIds={visibleNodeIds}
+        onConfirm={handleLinkFieldConfirm}
+      />
 
       {/* Object Connection Dialog */}
       {pendingObjectConnection && (
