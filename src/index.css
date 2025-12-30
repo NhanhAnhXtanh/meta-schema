@@ -150,3 +150,8 @@
 .react-flow__node > * {
   pointer-events: all !important;
 }
+
+/* Override text-gray-500 to use default text color */
+.text-gray-500 {
+  color: inherit !important;
+}
