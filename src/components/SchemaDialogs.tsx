@@ -1,18 +1,14 @@
-import { useEffect } from 'react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { AddTableDialog } from './AddTableDialog';
 import { LinkFieldDialog } from './LinkFieldDialog';
-import { ObjectConnectionDialog } from './ObjectConnectionDialog';
 import {
     setAddTableDialogOpen,
     closeLinkFieldDialog,
-    openLinkFieldDialog,
-    closeObjectConnectionDialog
+    openLinkFieldDialog
 } from '@/store/slices/uiSlice';
 import {
     confirmLinkField,
     confirmLinkObject,
-    confirmObjectConnection,
     deleteField
 } from '@/store/slices/schemaSlice';
 
@@ -22,27 +18,14 @@ export function SchemaDialogs() {
     // Dialog States
     const isAddTableOpen = useAppSelector(state => state.ui.isAddTableDialogOpen);
     const linkFieldDialogState = useAppSelector(state => state.ui.linkFieldDialog);
-    const objectConnectionState = useAppSelector(state => state.ui.objectConnectionDialog);
+
 
     // Data for Dialogs
     const nodes = useAppSelector(state => state.schema.present.nodes);
     const visibleNodeIdsArr = useAppSelector(state => state.ui.visibleNodeIds);
     const visibleNodeIds = new Set(visibleNodeIdsArr);
 
-    // Listen custom event 'addField'
-    useEffect(() => {
-        const handleAddFieldEvent = (event: Event) => {
-            const customEvent = event as CustomEvent<{ nodeId: string }>;
-            if (customEvent.detail?.nodeId) {
-                dispatch(openLinkFieldDialog(customEvent.detail.nodeId));
-            }
-        };
 
-        window.addEventListener('addField', handleAddFieldEvent);
-        return () => {
-            window.removeEventListener('addField', handleAddFieldEvent);
-        };
-    }, [dispatch]);
 
     // Handlers
     const handleLinkFieldConfirm = (targetNodeId: string, sourceKey: string, targetKey: string, newFieldName: string, type: '1-n' | 'n-1' | '1-1') => {
@@ -80,16 +63,7 @@ export function SchemaDialogs() {
         }
     };
 
-    const handleObjectConnectionConfirm = (fieldName: string, primaryKeyFieldName: string) => {
-        if (objectConnectionState.pendingConnection) {
-            dispatch(confirmObjectConnection({
-                ...objectConnectionState.pendingConnection,
-                newFieldName: fieldName,
-                primaryKeyFieldName
-            }));
-            dispatch(closeObjectConnectionDialog());
-        }
-    };
+
 
     return (
         <>
@@ -109,24 +83,7 @@ export function SchemaDialogs() {
                 initialValues={linkFieldDialogState.initialValues}
             />
 
-            {objectConnectionState.pendingConnection && (
-                <ObjectConnectionDialog
-                    open={objectConnectionState.isOpen}
-                    onOpenChange={(open) => !open && dispatch(closeObjectConnectionDialog())}
-                    sourceNodeId={objectConnectionState.pendingConnection.sourceNodeId}
-                    sourceFieldName={objectConnectionState.pendingConnection.sourceFieldName}
-                    targetNode={
-                        nodes.find(n => n.id === objectConnectionState.pendingConnection?.targetNodeId) || { id: '', data: { label: '', columns: [] } } as any
-                    }
-                    sourceNode={
-                        objectConnectionState.pendingConnection.sourceFieldName === 'object-target'
-                            ? (nodes.find(n => n.id === objectConnectionState.pendingConnection?.sourceNodeId) as any)
-                            : undefined
-                    }
-                    isReverse={objectConnectionState.pendingConnection.sourceFieldName === 'object-target'}
-                    onConfirm={handleObjectConnectionConfirm}
-                />
-            )}
+
         </>
     );
 }

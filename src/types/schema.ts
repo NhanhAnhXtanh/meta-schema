@@ -15,6 +15,7 @@ export interface TableNodeData {
     label: string;
     columns: TableColumn[];
     color?: string;
+    [key: string]: unknown;
 }
 
 // Re-export specific types if needed elsewhere or keep generic types here

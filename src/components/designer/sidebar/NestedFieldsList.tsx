@@ -3,7 +3,8 @@ import { useAppSelector } from '@/store/hooks';
 import { SidebarField } from './SidebarField';
 import { Plus } from 'lucide-react';
 import { useAppDispatch } from '@/store/hooks';
-import { addField, reorderFields } from '@/store/slices/schemaSlice';
+import { reorderFields } from '@/store/slices/schemaSlice';
+import { openLinkFieldDialog } from '@/store/slices/uiSlice';
 
 interface NestedFieldsListProps {
     nodeId: string;
@@ -51,7 +52,7 @@ export function NestedFieldsList({ nodeId }: NestedFieldsListProps) {
             </div>
             {node.data.columns.map((col, idx) => (
                 <SidebarField
-                    key={`${nodeId}-${idx}`}
+                    key={`${nodeId} -${idx} `}
                     nodeId={nodeId}
                     field={col}
                     index={idx}
@@ -63,7 +64,7 @@ export function NestedFieldsList({ nodeId }: NestedFieldsListProps) {
                 />
             ))}
             <button
-                onClick={() => window.dispatchEvent(new CustomEvent('addField', { detail: { nodeId: node.id } }))}
+                onClick={() => dispatch(openLinkFieldDialog(node.id))}
                 className="w-full mt-2 py-1.5 text-[10px] border border-dashed border-gray-300 text-gray-500 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 rounded flex items-center justify-center gap-1 transition-colors"
             >
                 <Plus className="w-3 h-3" /> Add Column to {node.data.label}

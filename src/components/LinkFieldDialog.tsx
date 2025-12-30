@@ -8,6 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { ValidationUtils } from '@/utils/validation';
+import { RELATIONSHIP_TYPES } from '@/constants';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -128,9 +130,13 @@ export function LinkFieldDialog({
     const targetCol = targetNode?.data.columns.find(c => c.name === selectedTargetKey);
 
     if (sourceCol && targetCol) {
-      if (sourceCol.type !== targetCol.type) {
-        return `Kiểu dữ liệu không khớp: ${sourceCol.name} (${sourceCol.type}) ≠ ${targetCol.name} (${targetCol.type})`;
-      }
+      const validation = ValidationUtils.validateRelationshipTypes(
+        sourceCol.type,
+        targetCol.type,
+        sourceCol.name,
+        targetCol.name
+      );
+      if (!validation.valid) return validation.error;
     }
     return null;
   }, [selectedSourceKey, selectedTargetKey, selectedTargetNodeId, sourceNode, availableTargetNodes]);
@@ -142,7 +148,7 @@ export function LinkFieldDialog({
     newFieldName.trim() &&
     !validationError;
 
-  const isArray = linkType === '1-n';
+  const isArray = linkType === RELATIONSHIP_TYPES.ONE_TO_MANY;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -160,13 +166,13 @@ export function LinkFieldDialog({
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Kiểu Dữ Liệu</label>
               <select
-                value={linkType === '1-n' ? 'array' : 'object'}
+                value={linkType === RELATIONSHIP_TYPES.ONE_TO_MANY ? 'array' : 'object'}
                 onChange={(e) => {
                   const type = e.target.value as 'array' | 'object';
                   if (type === 'array') {
-                    setLinkType('1-n');
+                    setLinkType(RELATIONSHIP_TYPES.ONE_TO_MANY);
                   } else {
-                    setLinkType('n-1'); // Default to n-1 for object
+                    setLinkType(RELATIONSHIP_TYPES.MANY_TO_ONE); // Default to n-1 for object
                   }
                 }}
                 className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -180,12 +186,12 @@ export function LinkFieldDialog({
               <label className="text-sm font-medium text-gray-700">Loại Liên Kết</label>
               <select
                 value={linkType}
-                onChange={(e) => setLinkType(e.target.value as '1-n' | 'n-1' | '1-1')}
+                onChange={(e) => setLinkType(e.target.value as any)}
                 className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <option value="1-n">1 - Nhiều (One to Many)</option>
-                <option value="n-1">Nhiều - 1 (Many to One)</option>
-                <option value="1-1">1 - 1 (One to One)</option>
+                <option value={RELATIONSHIP_TYPES.ONE_TO_MANY}>1 - Nhiều (One to Many)</option>
+                <option value={RELATIONSHIP_TYPES.MANY_TO_ONE}>Nhiều - 1 (Many to One)</option>
+                <option value={RELATIONSHIP_TYPES.ONE_TO_ONE}>1 - 1 (One to One)</option>
               </select>
             </div>
           </div>

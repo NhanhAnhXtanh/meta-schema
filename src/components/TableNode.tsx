@@ -2,6 +2,9 @@ import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Plus } from 'lucide-react';
+import { useAppDispatch } from '@/store/hooks';
+import { openLinkFieldDialog } from '@/store/slices/uiSlice';
+import { THEME } from '@/constants/theme';
 
 
 export interface TableNodeData {
@@ -23,12 +26,11 @@ export interface TableNodeData {
 }
 
 function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
-  const headerColor = data.color || '#3b82f6';
+  const dispatch = useAppDispatch();
+  const headerColor = data.color || THEME.NODE.HEADER_BG_DEFAULT;
 
   const handleAddField = () => {
-    // Dispatch custom event để App.tsx có thể listen
-    const event = new CustomEvent('addField', { detail: { nodeId: id } });
-    window.dispatchEvent(event);
+    dispatch(openLinkFieldDialog(id));
   };
 
   return (

@@ -38,7 +38,8 @@ export const DATA_TYPES = {
 // Relationship types
 export const RELATIONSHIP_TYPES = {
     ONE_TO_MANY: '1-n',
-    MANY_TO_ONE: 'n-1'
+    MANY_TO_ONE: 'n-1',
+    ONE_TO_ONE: '1-1'
 } as const;
 
 // Field constraints

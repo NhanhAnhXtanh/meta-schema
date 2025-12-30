@@ -1,10 +1,10 @@
-import React, { useState, useMemo, memo, useEffect } from 'react';
+import React, { useState, memo, useEffect } from 'react';
 import { GripVertical, Key, Link2, Trash2, ChevronDown, ChevronRight, Check, Plus, Edit2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableColumn } from '@/types/schema';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { updateField, deleteField, toggleFieldVisibility, addField } from '@/store/slices/schemaSlice';
+import { updateField, deleteField, toggleFieldVisibility } from '@/store/slices/schemaSlice';
 import { addVisibleNodeId, removeVisibleNodeId, openEditLinkFieldDialog } from '@/store/slices/uiSlice';
 import { NestedFieldsList } from './NestedFieldsList';
 
@@ -20,7 +20,7 @@ interface SidebarFieldProps {
     isDragOver?: boolean;
 }
 
-const DATA_TYPES = ['array', 'object'];
+
 
 const SidebarFieldBase = ({
     nodeId, field, index,
@@ -28,8 +28,7 @@ const SidebarFieldBase = ({
     isDragging, isDragOver
 }: SidebarFieldProps) => {
     const dispatch = useAppDispatch();
-    const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
-    const [typeSearchQuery, setTypeSearchQuery] = useState('');
+
 
     const [localName, setLocalName] = useState(field.name || '');
     const [isEditing, setIsEditing] = useState(false);
@@ -69,11 +68,7 @@ const SidebarFieldBase = ({
     const isObjectField = field.type === 'object';
     const isVirtualField = field.isVirtual;
 
-    const filteredDataTypes = useMemo(() => {
-        const tableNames = nodes.map(n => n.data.label);
-        const allTypes = [...DATA_TYPES, ...tableNames];
-        return allTypes.filter(t => t.toLowerCase().includes(typeSearchQuery.toLowerCase()));
-    }, [nodes, typeSearchQuery]);
+
 
     // -- Nested Field Logic --
     const [isExpanded, setIsExpanded] = useState(false);

@@ -21,16 +21,6 @@ interface UiState {
             linkType: '1-n' | 'n-1';
         };
     };
-
-    objectConnectionDialog: {
-        isOpen: boolean;
-        pendingConnection: {
-            sourceNodeId: string;
-            sourceFieldName: string;
-            targetNodeId: string;
-            targetFieldName?: string;
-        } | null;
-    };
 }
 
 const initialState: UiState = {
@@ -41,10 +31,6 @@ const initialState: UiState = {
     linkFieldDialog: {
         isOpen: false,
         sourceNodeId: null
-    },
-    objectConnectionDialog: {
-        isOpen: false,
-        pendingConnection: null
     }
 };
 
@@ -106,23 +92,13 @@ const uiSlice = createSlice({
             state.linkFieldDialog.isEditMode = false;
             state.linkFieldDialog.initialValues = undefined;
         },
-
-        openObjectConnectionDialog: (state, action: PayloadAction<UiState['objectConnectionDialog']['pendingConnection']>) => {
-            state.objectConnectionDialog.isOpen = true;
-            state.objectConnectionDialog.pendingConnection = action.payload;
-        },
-        closeObjectConnectionDialog: (state) => {
-            state.objectConnectionDialog.isOpen = false;
-            state.objectConnectionDialog.pendingConnection = null;
-        }
     },
 });
 
 export const {
     toggleSidebar, setVisibleNodeIds, addVisibleNodeId, removeVisibleNodeId, setSelectedNodeId,
     setAddTableDialogOpen,
-    openLinkFieldDialog, openEditLinkFieldDialog, closeLinkFieldDialog,
-    openObjectConnectionDialog, closeObjectConnectionDialog
+    openLinkFieldDialog, openEditLinkFieldDialog, closeLinkFieldDialog
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

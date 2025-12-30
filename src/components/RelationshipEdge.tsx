@@ -1,5 +1,6 @@
-import { memo, useState, useEffect, useCallback } from 'react';
-import { EdgeProps, getBezierPath, useReactFlow, Position, getSmoothStepPath } from '@xyflow/react';
+import { memo, useState, useEffect, useCallback, useMemo } from 'react';
+import { EdgeProps, getBezierPath, useReactFlow, Position, getSmoothStepPath, Node } from '@xyflow/react';
+import { TableNodeData, TableColumn } from '@/types/schema';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -8,11 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { ValidationUtils } from '@/utils/validation';
 import { MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { THEME } from '@/constants/theme';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { openEditLinkFieldDialog } from '@/store/slices/uiSlice';
-import { updateField, confirmLinkField, confirmLinkObject, deleteField } from '@/store/slices/schemaSlice';
+import { confirmLinkField, confirmLinkObject, deleteField } from '@/store/slices/schemaSlice';
 
 export type RelationshipType = '1-1' | '1-n' | 'n-1';
 export type EdgePathType = 'bezier' | 'smoothstep' | 'straight';
@@ -40,12 +42,9 @@ export function RelationshipEdge({
   selected,
   source,
   target,
-  sourceHandleId,
-  targetHandleId,
+  sourceHandleId: sourceHandle,
+  targetHandleId: targetHandle,
 }: EdgeProps<RelationshipEdgeData>) {
-  // Alias props to maintain compatibility with existing logic
-  const sourceHandle = sourceHandleId;
-  const targetHandle = targetHandleId;
 
   const { updateEdge, getNode, deleteElements, getEdges, getNodes } = useReactFlow();
   const dispatch = useAppDispatch();
@@ -68,28 +67,33 @@ export function RelationshipEdge({
 
   const validationError = useMemo(() => {
     if (!editedSourceKey || !editedTargetKey || !editedTargetId) return null;
-    const sourceNode = getNode(source);
-    const targetNode = nodes.find((n: any) => n.id === editedTargetId);
+    const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
+    const targetNode = nodes.find((n: Node) => n.id === editedTargetId) as Node<TableNodeData> | undefined;
     if (sourceNode && targetNode) {
-      const sourceCol = sourceNode.data.columns.find((c: any) => c.name === editedSourceKey);
-      const targetCol = targetNode.data.columns.find((c: any) => c.name === editedTargetKey);
-      if (sourceCol && targetCol && sourceCol.type !== targetCol.type) {
-        return `Kiểu dữ liệu không khớp: ${sourceCol.name} (${sourceCol.type}) ≠ ${targetCol.name} (${targetCol.type})`;
+      const sourceCol = sourceNode.data.columns.find((c) => c.name === editedSourceKey);
+      const targetCol = targetNode.data.columns.find((c) => c.name === editedTargetKey);
+      if (sourceCol && targetCol) {
+        const validation = ValidationUtils.validateRelationshipTypes(
+          sourceCol.type,
+          targetCol.type,
+          sourceCol.name,
+          targetCol.name
+        );
+        if (!validation.valid) return validation.error;
       }
     }
     return null;
   }, [editedSourceKey, editedTargetKey, editedTargetId, getNode, source, nodes]);
 
-  // 1. Initialize basic fields when menu opens
   useEffect(() => {
     if (isMenuOpen) {
       setEditedFieldName(sourceHandle || '');
       setEditedTargetId(target);
       setEditedTargetKey(targetHandle || '');
 
-      const sourceNode = getNode(source);
+      const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
       if (sourceNode) {
-        const col = sourceNode.data.columns.find((c: any) => c.name === sourceHandle);
+        const col = sourceNode.data.columns.find((c) => c.name === sourceHandle);
         // Initialize Data Type based on actual column
         if (col) {
           setIsVirtual(!!col.isVirtual);
@@ -98,12 +102,11 @@ export function RelationshipEdge({
     }
   }, [isMenuOpen, sourceHandle, target, targetHandle, getNode, source]);
 
-  // 2. Update Source Key when Relationship Type changes
   useEffect(() => {
     if (isMenuOpen) {
-      const sourceNode = getNode(source);
+      const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
       if (sourceNode) {
-        const col = sourceNode.data.columns.find((c: any) => c.name === sourceHandle);
+        const col = sourceNode.data.columns.find((c) => c.name === sourceHandle);
 
         let val = '';
         if (relationshipType === '1-n') {
@@ -129,7 +132,7 @@ export function RelationshipEdge({
     if (!sourceNode) return;
 
     // Determine original field index based on sourceHandle (which is the Field Name)
-    const fieldIndex = sourceNode.data.columns.findIndex((c: any) => c.name === sourceHandle);
+    const fieldIndex = sourceNode.data.columns.findIndex((c) => c.name === sourceHandle);
 
     if (fieldIndex !== -1) {
       // 1. Delete old field/edge configuration
@@ -140,7 +143,6 @@ export function RelationshipEdge({
       }));
     }
 
-    // 2. Create new configuration
     // 2. Create new configuration
     if (isVirtual) {
       dispatch(confirmLinkField({
@@ -249,42 +251,7 @@ export function RelationshipEdge({
     deleteElements({ edges: [{ id }] });
   };
 
-  const handleEditEdge = () => {
-    // Lấy source node để tìm field index
-    const sourceNode = getNode(source);
-    if (!sourceNode || !sourceHandle || !targetHandle) return;
 
-    // Tìm field index trong source node
-    const fieldIndex = sourceNode.data.columns.findIndex((col: any) => {
-      if (relationshipType === '1-n') {
-        // Array field: sourceHandle = field name
-        return col.name === sourceHandle && col.isVirtual === true;
-      } else {
-        // Object field: tìm theo objectFieldName trong edge data
-        return col.name === data?.objectFieldName && col.type === 'object';
-      }
-    });
-
-    if (fieldIndex === -1) return;
-
-    const field = sourceNode.data.columns[fieldIndex];
-
-    // Tạo initialValues
-    const initialValues = {
-      targetNodeId: target,
-      sourceKey: relationshipType === '1-n' ? (field.linkedPrimaryKeyField || 'id') : sourceHandle!,
-      targetKey: targetHandle,
-      fieldName: relationshipType === '1-n' ? sourceHandle : (data?.objectFieldName || field.name),
-      linkType: relationshipType as '1-n' | 'n-1'
-    };
-
-    // Dispatch action để mở dialog
-    dispatch(openEditLinkFieldDialog({
-      sourceNodeId: source,
-      fieldIndex,
-      initialValues
-    }));
-  };
 
   // Highlight fields khi hover vào edge
   useEffect(() => {
@@ -371,13 +338,13 @@ export function RelationshipEdge({
   const getRelationshipColor = (type: RelationshipType) => {
     switch (type) {
       case '1-1':
-        return '#22c55e'; // Xanh lá
+        return THEME.RELATIONSHIP.COLORS.ONE_TO_ONE;
       case '1-n':
-        return '#3b82f6'; // Xanh dương
+        return THEME.RELATIONSHIP.COLORS.ONE_TO_MANY;
       case 'n-1':
-        return '#a855f7'; // Tím
+        return THEME.RELATIONSHIP.COLORS.MANY_TO_ONE;
       default:
-        return '#3b82f6';
+        return THEME.RELATIONSHIP.COLORS.ONE_TO_MANY;
     }
   };
 
@@ -422,7 +389,7 @@ export function RelationshipEdge({
   const targetLabelPos = getTargetLabelPosition();
 
   const edgeColor = getRelationshipColor(relationshipType);
-  const defaultColor = '#9ca3af'; // Màu xám mặc định
+  const defaultColor = THEME.RELATIONSHIP.COLORS.DEFAULT; // Màu xám mặc định
   const currentColor = selected ? edgeColor : (isHovered ? edgeColor : defaultColor);
   const showButton = true; // Luôn hiện button 3 chấm
 
@@ -694,7 +661,7 @@ export function RelationshipEdge({
                           }}
                           className="w-full px-2 py-2 text-sm border rounded bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
                         >
-                          {nodes.filter((n: any) => n.id !== source).map((n: any) => (
+                          {nodes.filter((n: Node<TableNodeData>) => n.id !== source).map((n) => (
                             <option key={n.id} value={n.id}>{n.data.label}</option>
                           ))}
                         </select>
@@ -712,8 +679,8 @@ export function RelationshipEdge({
                         >
                           <option value="">Chọn...</option>
                           {(() => {
-                            const sourceNode = getNode(source);
-                            return sourceNode?.data.columns.map((col: any) => (
+                            const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
+                            return sourceNode?.data.columns.map((col) => (
                               <option key={col.name} value={col.name}>
                                 {col.name} {col.isPrimaryKey ? '(PK)' : ''}
                               </option>
@@ -732,8 +699,8 @@ export function RelationshipEdge({
                         >
                           <option value="">Chọn...</option>
                           {(() => {
-                            const targetNode = nodes.find((n: any) => n.id === editedTargetId);
-                            return targetNode?.data.columns.map((col: any) => (
+                            const targetNode = nodes.find((n: Node<TableNodeData>) => n.id === editedTargetId);
+                            return targetNode?.data.columns.map((col) => (
                               <option key={col.name} value={col.name}>
                                 {col.name} {col.isPrimaryKey ? '(PK)' : ''}
                               </option>
