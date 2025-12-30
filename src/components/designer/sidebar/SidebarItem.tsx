@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { Node } from '@xyflow/react';
 import { ChevronDown, ChevronRight, Edit2, GripVertical, MoreVertical, Palette, Trash2, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -23,10 +23,10 @@ interface SidebarItemProps {
     isDragOver?: boolean;
 }
 
-export function SidebarItem({
+const SidebarItemBase = ({
     node, depth = 0, isExpanded, onToggleExpand, isSelected,
     onDragStart, onDragOver, onDrop, isDragging, isDragOver
-}: SidebarItemProps) {
+}: SidebarItemProps) => {
     const dispatch = useAppDispatch();
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(node.data.label);
@@ -179,4 +179,6 @@ export function SidebarItem({
             )}
         </div>
     );
-}
+};
+
+export const SidebarItem = memo(SidebarItemBase);

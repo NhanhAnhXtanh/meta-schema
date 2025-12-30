@@ -1,6 +1,8 @@
+import { memo } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Plus } from 'lucide-react';
+
 
 export interface TableNodeData {
   label: string;
@@ -20,7 +22,7 @@ export interface TableNodeData {
   _version?: number; // Timestamp for tracking node changes (used for React Flow handle updates)
 }
 
-export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
+function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
   const headerColor = data.color || '#3b82f6';
 
   const handleAddField = () => {
@@ -159,3 +161,5 @@ export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
     </div>
   );
 }
+
+export const TableNode = memo(TableNodeComponent);

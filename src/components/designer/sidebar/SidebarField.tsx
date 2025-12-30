@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo, useEffect } from 'react';
 import { GripVertical, Key, Link2, Trash2, ChevronDown, ChevronRight, Check, Plus, Edit2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -22,16 +22,37 @@ interface SidebarFieldProps {
 
 const DATA_TYPES = ['array', 'object'];
 
-export function SidebarField({
+const SidebarFieldBase = ({
     nodeId, field, index,
     onDragStart, onDragOver, onDrop,
     isDragging, isDragOver
-}: SidebarFieldProps) {
+}: SidebarFieldProps) => {
     const dispatch = useAppDispatch();
     const [typeDropdownOpen, setTypeDropdownOpen] = useState(false);
     const [typeSearchQuery, setTypeSearchQuery] = useState('');
 
-    // Linked table logic for virtual fields
+    const [localName, setLocalName] = useState(field.name || '');
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Sync local name when field name changes from external sources, but not while editing
+    useEffect(() => {
+        if (!isEditing) {
+            setLocalName(field.name || '');
+        }
+    }, [field.name, isEditing]);
+
+    // Debounce update logic
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (localName !== (field.name || '') && (field.isVirtual === true || field.type === 'object' || field.type === 'array')) {
+                dispatch(updateField({ nodeId, fieldIndex: index, updates: { name: localName } }));
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [localName, nodeId, index, dispatch, field.name, field.isVirtual, field.type]);
+
+
     const edges = useAppSelector(state => state.schema.edges);
     const nodes = useAppSelector(state => state.schema.nodes);
 
@@ -119,16 +140,14 @@ export function SidebarField({
                     className="w-4 h-4 cursor-pointer accent-blue-600"
                 />
 
+
                 {/* Name Input */}
                 <div className="flex-1 min-w-[60px] overflow-hidden flex items-center gap-2">
                     <Input
-                        value={field.name || ''}
-                        onChange={(e) => {
-                            // Allow editing for virtual fields, object fields, and array fields
-                            if (field.isVirtual === true || field.type === 'object' || field.type === 'array') {
-                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { name: e.target.value } }));
-                            }
-                        }}
+                        value={localName}
+                        onChange={(e) => setLocalName(e.target.value)}
+                        onFocus={() => setIsEditing(true)}
+                        onBlur={() => setIsEditing(false)}
                         placeholder="Field Name"
                         disabled={field.isVirtual !== true && field.type !== 'object' && field.type !== 'array'}
                         className={cn(
@@ -309,4 +328,6 @@ export function SidebarField({
             )}
         </div>
     );
-}
+};
+
+export const SidebarField = memo(SidebarFieldBase);
