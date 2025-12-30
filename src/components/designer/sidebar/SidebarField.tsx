@@ -123,17 +123,17 @@ export function SidebarField({
                     <Input
                         value={field.name || ''}
                         onChange={(e) => {
-                            // Only allow editing for virtual fields
-                            if (field.isVirtual === true || field.type === 'object') {
+                            // Allow editing for virtual fields, object fields, and array fields
+                            if (field.isVirtual === true || field.type === 'object' || field.type === 'array') {
                                 dispatch(updateField({ nodeId, fieldIndex: index, updates: { name: e.target.value } }));
                             }
                         }}
                         placeholder="Field Name"
-                        disabled={field.isVirtual !== true && field.type !== 'object'}
+                        disabled={field.isVirtual !== true && field.type !== 'object' && field.type !== 'array'}
                         className={cn(
                             "h-7 flex-1 text-xs bg-transparent border-0 text-gray-900 font-bold font-mono px-1 focus:bg-white focus:border-gray-500 focus:px-2 rounded placeholder:text-gray-400",
                             field.visible === false && "line-through text-gray-500",
-                            (field.isVirtual !== true && field.type !== 'object') && "cursor-not-allowed disabled:opacity-100"
+                            (field.isVirtual !== true && field.type !== 'object' && field.type !== 'array') && "cursor-not-allowed disabled:opacity-100"
                         )}
                     />
                     {!hasNestedFields && field.isVirtual && linkedTableName && (
@@ -233,13 +233,22 @@ export function SidebarField({
                             onClick={() => {
                                 let initialValues = null;
                                 // Case 1: Virtual Field (Array 1-n)
-                                if (field.isVirtual) {
+                                if (field.isVirtual || field.type === 'array') {
                                     const edge = edges.find(e => e.source === nodeId && e.sourceHandle === field.name);
                                     if (edge && edge.targetHandle) {
                                         initialValues = {
                                             targetNodeId: edge.target,
                                             sourceKey: field.linkedPrimaryKeyField || 'id',
                                             targetKey: edge.targetHandle,
+                                            fieldName: field.name,
+                                            linkType: '1-n' as const
+                                        };
+                                    } else {
+                                        // No edge exists, open dialog with defaults for creating new link
+                                        initialValues = {
+                                            targetNodeId: '',
+                                            sourceKey: 'id',
+                                            targetKey: '',
                                             fieldName: field.name,
                                             linkType: '1-n' as const
                                         };
@@ -255,9 +264,19 @@ export function SidebarField({
                                             fieldName: field.name,
                                             linkType: 'n-1' as const
                                         };
+                                    } else {
+                                        // No edge exists, open dialog with defaults
+                                        initialValues = {
+                                            targetNodeId: '',
+                                            sourceKey: '',
+                                            targetKey: 'id',
+                                            fieldName: field.name,
+                                            linkType: 'n-1' as const
+                                        };
                                     }
                                 }
 
+                                // Always open dialog (even if no edge exists)
                                 if (initialValues) {
                                     dispatch(openEditLinkFieldDialog({
                                         sourceNodeId: nodeId,
@@ -266,14 +285,14 @@ export function SidebarField({
                                     }));
                                 }
                             }}
-                            className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors opacity-0 group-hover/field:opacity-100"
+                            className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                             title="Edit Field"
                         >
                             <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                             onClick={() => dispatch(deleteField({ nodeId, fieldIndex: index }))}
-                            className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors opacity-0 group-hover/field:opacity-100"
+                            className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Delete Field"
                         >
                             <Trash2 className="w-3.5 h-3.5" />

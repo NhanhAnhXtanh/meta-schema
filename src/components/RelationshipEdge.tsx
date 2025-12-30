@@ -13,6 +13,7 @@ import { MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAppDispatch } from '@/store/hooks';
 import { openEditLinkFieldDialog } from '@/store/slices/uiSlice';
+import { updateField } from '@/store/slices/schemaSlice';
 
 export type RelationshipType = '1-1' | '1-n' | 'n-1';
 export type EdgePathType = 'bezier' | 'smoothstep' | 'straight';
@@ -170,6 +171,7 @@ export function RelationshipEdge({
   };
 
   const handleDeleteEdge = () => {
+    // Only delete the edge, keep fields intact so they can be re-linked
     deleteElements({ edges: [{ id }] });
   };
 
@@ -556,11 +558,11 @@ export function RelationshipEdge({
 
                 {/* Right Column: Thông tin liên kết */}
                 <div className="border-l pl-4">
-                  <DropdownMenuLabel className="px-0">Thông tin liên kết</DropdownMenuLabel>
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
+                  <DropdownMenuLabel className="px-0 text-base font-semibold">Thông tin liên kết</DropdownMenuLabel>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">Tên trường</label>
+                        <label className="text-sm text-gray-500 block mb-1.5 font-medium">Tên trường</label>
                         <input
                           type="text"
                           value={(() => {
@@ -579,11 +581,11 @@ export function RelationshipEdge({
                             }
                           })()}
                           readOnly
-                          className="w-full px-2 py-1 text-xs border rounded bg-gray-50 text-gray-700"
+                          className="w-full px-3 py-2 text-sm border rounded bg-gray-50 text-gray-900 font-medium"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">Bảng đích</label>
+                        <label className="text-sm text-gray-500 block mb-1.5 font-medium">Bảng đích</label>
                         <input
                           type="text"
                           value={(() => {
@@ -595,9 +597,9 @@ export function RelationshipEdge({
                         />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">
+                        <label className="text-sm text-gray-500 block mb-1.5 font-medium">
                           {relationshipType === '1-n' ? 'Source (PK)' : 'Source (FK)'}
                         </label>
                         <input
@@ -623,11 +625,11 @@ export function RelationshipEdge({
                             }
                           })()}
                           readOnly
-                          className="w-full px-2 py-1 text-xs border rounded bg-gray-50 text-gray-700"
+                          className="w-full px-3 py-2 text-sm border rounded bg-gray-50 text-gray-900 font-medium"
                         />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500 block mb-1">
+                        <label className="text-sm text-gray-500 block mb-1.5 font-medium">
                           {relationshipType === '1-n' ? 'Target (FK)' : 'Target (PK)'}
                         </label>
                         <input
@@ -650,15 +652,15 @@ export function RelationshipEdge({
                             }
                           })()}
                           readOnly
-                          className="w-full px-2 py-1 text-xs border rounded bg-gray-50 text-gray-700"
+                          className="w-full px-3 py-2 text-sm border rounded bg-gray-50 text-gray-900 font-medium"
                         />
                       </div>
                     </div>
                     <button
                       onClick={handleEditEdge}
-                      className="w-full px-2 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded flex items-center justify-center gap-1 transition-colors"
+                      className="w-full px-3 py-2.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded flex items-center justify-center gap-1.5 transition-colors font-medium"
                     >
-                      <Edit2 size={12} />
+                      <Edit2 size={14} />
                       <span>Chỉnh sửa chi tiết</span>
                     </button>
                   </div>
