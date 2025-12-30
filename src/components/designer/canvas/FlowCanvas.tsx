@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useMemo } from 'react';
 import {
     ReactFlow,
     Background,
@@ -48,13 +48,40 @@ export function FlowCanvas() {
     const nodes = useAppSelector((state) => state.schema.present.nodes);
     const edges = useAppSelector((state) => state.schema.present.edges);
     const visibleNodeIds = useAppSelector((state) => state.ui.visibleNodeIds);
+    const selectedNodeId = useAppSelector((state) => state.ui.selectedNodeId);
 
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
-    const visibleNodes = nodes.filter(node => visibleNodeIds.includes(node.id));
+    const visibleNodes = useMemo(() => {
+        return nodes
+            .filter(node => visibleNodeIds.includes(node.id))
+            .map(node => ({
+                ...node,
+                selected: node.id === selectedNodeId
+            }));
+    }, [nodes, visibleNodeIds, selectedNodeId]);
 
     const onInit = useCallback((instance: ReactFlowInstance) => {
         reactFlowInstance.current = instance;
+    }, []);
+
+    // Listen for flyToNode event
+    useEffect(() => {
+        const handleFlyToNode = (event: Event) => {
+            const customEvent = event as CustomEvent<{ nodeId: string }>;
+            const nodeId = customEvent.detail?.nodeId;
+            if (nodeId && reactFlowInstance.current) {
+                reactFlowInstance.current.fitView({
+                    nodes: [{ id: nodeId }],
+                    duration: 800,
+                    padding: 0.2,
+                    maxZoom: 1.5
+                });
+            }
+        };
+
+        window.addEventListener('flyToNode', handleFlyToNode);
+        return () => window.removeEventListener('flyToNode', handleFlyToNode);
     }, []);
 
     return (

@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
-import { Plus, Search, Undo2, Redo2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Plus, Search, Undo2, Redo2, LayoutDashboard } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setAddTableDialogOpen } from '@/store/slices/uiSlice';
+import { setNodes } from '@/store/slices/schemaSlice';
+import { performAutoLayout } from '@/utils/autoLayout';
 import { ActionCreators } from 'redux-undo';
 
 interface SidebarHeaderProps {
@@ -14,16 +16,21 @@ interface SidebarHeaderProps {
 export function SidebarHeader({ searchQuery, setSearchQuery }: SidebarHeaderProps) {
     const dispatch = useAppDispatch();
 
+    // Schema Data for Auto Layout
+    const nodes = useAppSelector(state => state.schema.present.nodes);
+
     // Undo/Redo State
-    // Note: We need to cast or access via unknown if RootState type inference isn't perfect, 
-    // but toolkit usually handles it.
     const canUndo = useAppSelector(state => state.schema.past.length > 0);
     const canRedo = useAppSelector(state => state.schema.future.length > 0);
+
+    const handleAutoLayout = () => {
+        const layoutedNodes = performAutoLayout(nodes);
+        dispatch(setNodes(layoutedNodes));
+    };
 
     // Keyboard Shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Check if user is typing in an input
             if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
                 return;
             }
@@ -74,6 +81,16 @@ export function SidebarHeader({ searchQuery, setSearchQuery }: SidebarHeaderProp
                         title="Redo (Ctrl+Y)"
                     >
                         <Redo2 className="w-4 h-4" />
+                    </Button>
+                    <div className="w-px h-4 bg-gray-300 mx-1" />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-600 hover:text-gray-900"
+                        onClick={handleAutoLayout}
+                        title="Auto Layout"
+                    >
+                        <LayoutDashboard className="w-4 h-4" />
                     </Button>
                     <div className="w-px h-4 bg-gray-300 mx-1" />
                     <Button
