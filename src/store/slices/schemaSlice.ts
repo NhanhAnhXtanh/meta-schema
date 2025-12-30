@@ -141,6 +141,7 @@ interface LinkFieldPayload {
     sourcePK: string;
     targetFK: string;
     newFieldName: string;
+    relationshipType?: '1-n' | '1-1' | 'n-1';
 }
 
 interface ObjectConnectionPayload {
@@ -324,20 +325,53 @@ const schemaSlice = createSlice({
                 const field = node.data.columns[fieldIndex];
 
                 // Identify edges connecting to this field (outgoing/downstream to children)
-                const childEdges = state.edges.filter(e =>
+                const edgesToDelete = state.edges.filter(e =>
                     (e.source === nodeId && e.sourceHandle === field.name) || // 1-n array/link
                     (e.source === nodeId && e.data?.objectFieldName === field.name) // n-1 object link
                 );
 
-                const childNodeIds = childEdges.map(e => e.target);
+                const childNodeIds = edgesToDelete.map(e => e.target);
 
-                // Remove ALL edges connected to this field (both incoming and outgoing)
-                state.edges = state.edges.filter(e =>
-                    !((e.source === nodeId && e.sourceHandle === field.name) ||
-                        (e.target === nodeId && e.targetHandle === field.name) ||
-                        (e.source === nodeId && e.data?.objectFieldName === field.name)
-                    )
-                );
+                // Collect potential FKs to cleanup
+                const potentialFKsToCleanup: { nodeId: string, fieldName: string }[] = [];
+                edgesToDelete.forEach(e => {
+                    if (e.data?.relationshipType === '1-n') {
+                        // FK is on target
+                        if (e.target && e.targetHandle) {
+                            potentialFKsToCleanup.push({ nodeId: e.target, fieldName: e.targetHandle });
+                        }
+                    } else {
+                        // n-1 or 1-1, FK is on source
+                        if (e.source && e.data?.sourceFK) {
+                            potentialFKsToCleanup.push({ nodeId: e.source, fieldName: e.data.sourceFK });
+                        }
+                    }
+                });
+
+                // Remove edges
+                const edgeIdsToDelete = new Set(edgesToDelete.map(e => e.id));
+                state.edges = state.edges.filter(e => !edgeIdsToDelete.has(e.id));
+
+                // Cleanup FK status if no longer used
+                potentialFKsToCleanup.forEach(({ nodeId, fieldName }) => {
+                    const isUsed = state.edges.some(e => {
+                        if (e.data?.relationshipType === '1-n') {
+                            return e.target === nodeId && e.targetHandle === fieldName;
+                        } else {
+                            return e.source === nodeId && e.data?.sourceFK === fieldName;
+                        }
+                    });
+
+                    if (!isUsed) {
+                        const targetNode = state.nodes.find(n => n.id === nodeId);
+                        if (targetNode) {
+                            const col = targetNode.data.columns.find(c => c.name === fieldName);
+                            if (col) {
+                                col.isForeignKey = false;
+                            }
+                        }
+                    }
+                });
 
                 // Remove the field
                 node.data.columns.splice(fieldIndex, 1);
@@ -401,7 +435,7 @@ const schemaSlice = createSlice({
 
         // Complex Operations
         confirmLinkField: (state, action: PayloadAction<LinkFieldPayload>) => {
-            const { sourceNodeId, targetNodeId, sourcePK, targetFK, newFieldName } = action.payload;
+            const { sourceNodeId, targetNodeId, sourcePK, targetFK, newFieldName, relationshipType } = action.payload;
 
             const sourceNode = state.nodes.find(n => n.id === sourceNodeId);
             const targetNode = state.nodes.find(n => n.id === targetNodeId);
@@ -434,7 +468,7 @@ const schemaSlice = createSlice({
                 sourceHandle: newFieldName,
                 targetHandle: targetFK,
                 type: 'relationship',
-                data: { relationshipType: '1-n' }
+                data: { relationshipType: relationshipType || '1-n' }
             });
 
             // Force nodes update to trigger React Flow handle recompute
@@ -454,8 +488,9 @@ const schemaSlice = createSlice({
             sourceFK: string;
             targetPK: string;
             newFieldName: string;
+            relationshipType?: 'n-1' | '1-1';
         }>) => {
-            const { sourceNodeId, targetNodeId, sourceFK, targetPK, newFieldName } = action.payload;
+            const { sourceNodeId, targetNodeId, sourceFK, targetPK, newFieldName, relationshipType } = action.payload;
             const sourceNode = state.nodes.find(n => n.id === sourceNodeId);
             const targetNode = state.nodes.find(n => n.id === targetNodeId);
 
@@ -469,7 +504,7 @@ const schemaSlice = createSlice({
                     isForeignKey: false,
                     isNotNull: false,
                     primaryKeyField: targetPK, // Store generic PK ref
-                    relationshipType: 'n-1'
+                    relationshipType: relationshipType || 'n-1'
                 });
 
                 // 2. Mark Source FK field as ForeignKey
@@ -492,13 +527,14 @@ const schemaSlice = createSlice({
                         id: edgeId,
                         source: sourceNodeId,
                         target: targetNodeId,
-                        sourceHandle: sourceFK,
+                        sourceHandle: newFieldName, // Use the virtual field name as the source handle
                         targetHandle: targetPK,
                         type: 'relationship',
                         data: {
-                            relationshipType: 'n-1',
+                            relationshipType: relationshipType || 'n-1',
                             primaryKeyField: targetPK,
-                            objectFieldName: newFieldName
+                            objectFieldName: newFieldName,
+                            sourceFK: sourceFK // Store the physical FK column name
                         }
                     });
                 }

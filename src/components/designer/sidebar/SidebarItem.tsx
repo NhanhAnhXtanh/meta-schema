@@ -108,7 +108,7 @@ const SidebarItemBase = ({
                     <GripVertical className="w-4 h-4 text-gray-400 mr-2 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
 
                     {/* Node Name */}
-                    <div className="flex-1 cursor-pointer py-3" onClick={() => {
+                    <div className="flex-1 cursor-pointer py-3 min-w-0" onClick={() => {
                         dispatch(setSelectedNodeId(node.id));
                         // Dispatch event to fly to node on canvas
                         window.dispatchEvent(new CustomEvent('flyToNode', { detail: { nodeId: node.id } }));
@@ -124,7 +124,9 @@ const SidebarItemBase = ({
                                 onClick={e => e.stopPropagation()}
                             />
                         ) : (
-                            <span className="text-sm font-medium text-gray-700">{node.data.label}</span>
+                            <span className="text-sm font-medium text-gray-700 truncate block" title={node.data.label}>
+                                {node.data.label}
+                            </span>
                         )}
                     </div>
 

@@ -2,18 +2,17 @@ import { memo, useState, useEffect, useCallback } from 'react';
 import { EdgeProps, getBezierPath, useReactFlow, Position, getSmoothStepPath } from '@xyflow/react';
 import { Button } from './ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-  DropdownMenuLabel,
-} from './ui/dropdown-menu';
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { openEditLinkFieldDialog } from '@/store/slices/uiSlice';
-import { updateField } from '@/store/slices/schemaSlice';
+import { updateField, confirmLinkField, confirmLinkObject, deleteField } from '@/store/slices/schemaSlice';
 
 export type RelationshipType = '1-1' | '1-n' | 'n-1';
 export type EdgePathType = 'bezier' | 'smoothstep' | 'straight';
@@ -22,8 +21,9 @@ export interface RelationshipEdgeData {
   relationshipType?: RelationshipType;
   pathType?: EdgePathType;
   controlPoint?: { x: number; y: number };
-  primaryKeyField?: string; // Field làm PK (cho object connection)
-  objectFieldName?: string; // Tên field object mới được tạo
+  primaryKeyField?: string;
+  objectFieldName?: string;
+  sourceFK?: string;
 }
 
 export function RelationshipEdge({
@@ -40,17 +40,131 @@ export function RelationshipEdge({
   selected,
   source,
   target,
-  sourceHandle,
-  targetHandle,
+  sourceHandleId,
+  targetHandleId,
 }: EdgeProps<RelationshipEdgeData>) {
-  const { updateEdge, getNode, deleteElements, getEdges } = useReactFlow();
+  // Alias props to maintain compatibility with existing logic
+  const sourceHandle = sourceHandleId;
+  const targetHandle = targetHandleId;
+
+  const { updateEdge, getNode, deleteElements, getEdges, getNodes } = useReactFlow();
   const dispatch = useAppDispatch();
+  const nodes = getNodes(); // Get latest nodes for dropdown
+
   const [relationshipType, setRelationshipType] = useState<RelationshipType>(
     data?.relationshipType || '1-n'
   );
+
+  // Local state for inline editing
+  const [editedFieldName, setEditedFieldName] = useState(sourceHandle || '');
+  const [editedTargetId, setEditedTargetId] = useState(target);
+  const [editedSourceKey, setEditedSourceKey] = useState('');
+  const [editedTargetKey, setEditedTargetKey] = useState(targetHandle || '');
+
   const [isHovered, setIsHovered] = useState(false);
   const [pathType, setPathType] = useState<EdgePathType>(data?.pathType || 'bezier');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isVirtual, setIsVirtual] = useState(data?.relationshipType === '1-n');
+
+  const validationError = useMemo(() => {
+    if (!editedSourceKey || !editedTargetKey || !editedTargetId) return null;
+    const sourceNode = getNode(source);
+    const targetNode = nodes.find((n: any) => n.id === editedTargetId);
+    if (sourceNode && targetNode) {
+      const sourceCol = sourceNode.data.columns.find((c: any) => c.name === editedSourceKey);
+      const targetCol = targetNode.data.columns.find((c: any) => c.name === editedTargetKey);
+      if (sourceCol && targetCol && sourceCol.type !== targetCol.type) {
+        return `Kiểu dữ liệu không khớp: ${sourceCol.name} (${sourceCol.type}) ≠ ${targetCol.name} (${targetCol.type})`;
+      }
+    }
+    return null;
+  }, [editedSourceKey, editedTargetKey, editedTargetId, getNode, source, nodes]);
+
+  // 1. Initialize basic fields when menu opens
+  useEffect(() => {
+    if (isMenuOpen) {
+      setEditedFieldName(sourceHandle || '');
+      setEditedTargetId(target);
+      setEditedTargetKey(targetHandle || '');
+
+      const sourceNode = getNode(source);
+      if (sourceNode) {
+        const col = sourceNode.data.columns.find((c: any) => c.name === sourceHandle);
+        // Initialize Data Type based on actual column
+        if (col) {
+          setIsVirtual(!!col.isVirtual);
+        }
+      }
+    }
+  }, [isMenuOpen, sourceHandle, target, targetHandle, getNode, source]);
+
+  // 2. Update Source Key when Relationship Type changes
+  useEffect(() => {
+    if (isMenuOpen) {
+      const sourceNode = getNode(source);
+      if (sourceNode) {
+        const col = sourceNode.data.columns.find((c: any) => c.name === sourceHandle);
+
+        let val = '';
+        if (relationshipType === '1-n') {
+          val = col?.linkedPrimaryKeyField || '';
+        } else {
+          val = data?.sourceFK || '';
+        }
+        if (!val) {
+          val = col?.linkedPrimaryKeyField || data?.sourceFK ||
+            (col?.isForeignKey ? col.name : '') || '';
+        }
+        setEditedSourceKey(val);
+      }
+    }
+  }, [isMenuOpen, relationshipType, sourceHandle, data, getNode, source]);
+
+  // Handle Save Inline
+  const handleSaveInline = () => {
+    if (!editedFieldName || !editedTargetId || !editedSourceKey || !editedTargetKey) return;
+
+    // Find original field index to delete
+    const sourceNode = getNode(source);
+    if (!sourceNode) return;
+
+    // Determine original field index based on sourceHandle (which is the Field Name)
+    const fieldIndex = sourceNode.data.columns.findIndex((c: any) => c.name === sourceHandle);
+
+    if (fieldIndex !== -1) {
+      // 1. Delete old field/edge configuration
+      dispatch(deleteField({
+        nodeId: source,
+        fieldIndex,
+        skipRecursive: true // We are replacing it immediately
+      }));
+    }
+
+    // 2. Create new configuration
+    // 2. Create new configuration
+    if (isVirtual) {
+      dispatch(confirmLinkField({
+        sourceNodeId: source,
+        targetNodeId: editedTargetId,
+        sourcePK: editedSourceKey,
+        targetFK: editedTargetKey,
+        newFieldName: editedFieldName,
+        relationshipType: relationshipType
+      }));
+    } else {
+      // n-1 or 1-1
+      dispatch(confirmLinkObject({
+        sourceNodeId: source,
+        targetNodeId: editedTargetId,
+        sourceFK: editedSourceKey,
+        targetPK: editedTargetKey,
+        newFieldName: editedFieldName,
+        relationshipType: relationshipType as 'n-1' | '1-1'
+      }));
+    }
+
+    setIsMenuOpen(false);
+  };
 
   // Đồng bộ state với data khi data thay đổi
   useEffect(() => {
@@ -96,67 +210,27 @@ export function RelationshipEdge({
   const labelY = (sourceY + targetY) / 2;
 
   const handleRelationshipChange = (newType: RelationshipType) => {
-    if (newType === relationshipType) return; // No change
-
+    if (newType === relationshipType) return;
     setRelationshipType(newType);
 
-    // Get source node to update field
+    // Smart auto-fill keys based on new type constraints
     const sourceNode = getNode(source);
-    if (!sourceNode || !sourceHandle || !targetHandle) return;
+    const targetNode = nodes.find(n => n.id === editedTargetId);
 
-    // Find the field index
-    const fieldIndex = sourceNode.data.columns.findIndex((col: any) => {
-      if (relationshipType === '1-n') {
-        // Currently array field
-        return col.name === sourceHandle && col.isVirtual === true;
-      } else {
-        // Currently object field
-        return col.name === data?.objectFieldName && col.type === 'object';
-      }
-    });
+    if (newType === '1-n') {
+      // 1-n: Source is PK, Target is FK
+      // Find PK in source
+      const sourcePK = sourceNode?.data.columns.find(c => c.isPrimaryKey)?.name;
+      if (sourcePK) setEditedSourceKey(sourcePK);
 
-    if (fieldIndex === -1) return;
-
-    const currentField = sourceNode.data.columns[fieldIndex];
-
-    // Convert field type
-    if (newType === '1-n' && relationshipType === 'n-1') {
-      // Convert from Object (n-1) to Array (1-n)
-      // Delete old object field and create new virtual field
-      dispatch(openEditLinkFieldDialog({
-        sourceNodeId: source,
-        fieldIndex,
-        initialValues: {
-          targetNodeId: target,
-          sourceKey: targetHandle, // PK becomes source key
-          targetKey: sourceHandle, // FK becomes target key
-          fieldName: currentField.name,
-          linkType: '1-n'
-        }
-      }));
-    } else if (newType === 'n-1' && relationshipType === '1-n') {
-      // Convert from Array (1-n) to Object (n-1)
-      dispatch(openEditLinkFieldDialog({
-        sourceNodeId: source,
-        fieldIndex,
-        initialValues: {
-          targetNodeId: target,
-          sourceKey: targetHandle, // Target key becomes FK
-          targetKey: currentField.linkedPrimaryKeyField || 'id', // Source PK
-          fieldName: currentField.name,
-          linkType: 'n-1'
-        }
-      }));
+      // Reset Target key if it looks like a PK (usually 'id')
+      // or keep it if it looks like an FK
+    } else {
+      // n-1 or 1-1: Source is FK, Target is PK
+      // Find PK in target
+      const targetPK = targetNode?.data.columns.find(c => c.isPrimaryKey)?.name;
+      if (targetPK) setEditedTargetKey(targetPK);
     }
-
-    // Update edge data
-    updateEdge(id, (edge) => ({
-      ...edge,
-      data: {
-        ...edge.data,
-        relationshipType: newType,
-      },
-    }));
   };
 
   const handlePathTypeChange = (type: EdgePathType) => {
@@ -460,13 +534,14 @@ export function RelationshipEdge({
         requiredExtensions="http://www.w3.org/1999/xhtml"
       >
         <div className="flex items-center justify-center w-full h-full">
-          <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <DropdownMenuTrigger asChild>
+          <Dialog open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+            <DialogTrigger asChild>
               <Button
                 size="icon"
                 variant="secondary"
                 onClick={(e) => {
                   e.stopPropagation();
+                  setIsMenuOpen(true);
                 }}
                 className={cn(
                   'h-10 w-10 rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer',
@@ -481,55 +556,94 @@ export function RelationshipEdge({
                   style={{ color: edgeColor }}
                 />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="center" className="w-[600px]">
-              <div className="grid gap-4 p-2" style={{ gridTemplateColumns: '2fr 3fr' }}>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden gap-0">
+              <DialogHeader className="px-6 py-4 border-b bg-gray-50">
+                <DialogTitle>Chỉnh sửa liên kết</DialogTitle>
+              </DialogHeader>
+
+              <div className="grid gap-6 p-6" style={{ gridTemplateColumns: '1fr 2fr' }}>
                 {/* Left Column: Quan hệ & Kiểu đường */}
-                <div className="space-y-3">
+                <div className="space-y-6 border-r pr-6">
                   <div>
-                    <DropdownMenuLabel className="px-0">Quan hệ</DropdownMenuLabel>
+                    <h4 className="font-medium text-sm text-gray-900 mb-3">Kiểu Dữ Liệu</h4>
                     <div className="space-y-1">
                       <button
-                        onClick={() => handleRelationshipChange('1-1')}
+                        onClick={() => {
+                          setIsVirtual(true);
+                          if (relationshipType !== '1-n') handleRelationshipChange('1-n');
+                        }}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors',
-                          relationshipType === '1-1' ? 'bg-green-50 text-green-700' : 'hover:bg-gray-50'
+                          isVirtual ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-50 text-gray-700'
                         )}
                       >
-                        <span className="font-semibold text-green-600">1:1</span>
-                        <span className="ml-2 text-xs text-gray-500">One to One</span>
+                        <span className="block font-semibold">Array</span>
+                        <span className="block text-xs text-gray-500 mt-0.5">Danh sách (1:N)</span>
                       </button>
                       <button
-                        onClick={() => handleRelationshipChange('1-n')}
+                        onClick={() => {
+                          setIsVirtual(false);
+                          if (relationshipType === '1-n') handleRelationshipChange('n-1');
+                        }}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors',
-                          relationshipType === '1-n' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'
+                          !isVirtual ? 'bg-purple-50 text-purple-700 font-medium' : 'hover:bg-gray-50 text-gray-700'
                         )}
                       >
-                        <span className="font-semibold text-blue-600">1:N</span>
-                        <span className="ml-2 text-xs text-gray-500">One to Many</span>
-                      </button>
-                      <button
-                        onClick={() => handleRelationshipChange('n-1')}
-                        className={cn(
-                          'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors',
-                          relationshipType === 'n-1' ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50'
-                        )}
-                      >
-                        <span className="font-semibold text-purple-600">N:1</span>
-                        <span className="ml-2 text-xs text-gray-500">Many to One</span>
+                        <span className="block font-semibold">Object</span>
+                        <span className="block text-xs text-gray-500 mt-0.5">Đối tượng (N:1, 1:1)</span>
                       </button>
                     </div>
                   </div>
 
                   <div>
-                    <DropdownMenuLabel className="px-0">Kiểu đường</DropdownMenuLabel>
+                    <h4 className="font-medium text-sm text-gray-900 mb-3">Quan hệ</h4>
+                    <div className="space-y-1">
+                      <button
+                        onClick={() => handleRelationshipChange('1-1')}
+                        className={cn(
+                          'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors flex items-center justify-between',
+                          relationshipType === '1-1' ? 'bg-green-50 text-green-700' : 'hover:bg-gray-50'
+                        )}
+                      >
+                        <span className="font-semibold text-green-600">1:1</span>
+                        <span className="text-xs text-gray-500">One to One</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleRelationshipChange('1-n');
+                          setIsVirtual(true);
+                        }}
+                        className={cn(
+                          'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors flex items-center justify-between',
+                          relationshipType === '1-n' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50'
+                        )}
+                      >
+                        <span className="font-semibold text-blue-600">1:N</span>
+                        <span className="text-xs text-gray-500">One to Many</span>
+                      </button>
+                      <button
+                        onClick={() => handleRelationshipChange('n-1')}
+                        className={cn(
+                          'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors flex items-center justify-between',
+                          relationshipType === 'n-1' ? 'bg-purple-50 text-purple-700' : 'hover:bg-gray-50'
+                        )}
+                      >
+                        <span className="font-semibold text-purple-600">N:1</span>
+                        <span className="text-xs text-gray-500">Many to One</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium text-sm text-gray-900 mb-3">Kiểu đường</h4>
                     <div className="space-y-1">
                       <button
                         onClick={() => handlePathTypeChange('bezier')}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors',
-                          pathType === 'bezier' ? 'bg-gray-100' : 'hover:bg-gray-50'
+                          pathType === 'bezier' ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50 text-gray-700'
                         )}
                       >
                         Cong (Bezier)
@@ -538,7 +652,7 @@ export function RelationshipEdge({
                         onClick={() => handlePathTypeChange('smoothstep')}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors',
-                          pathType === 'smoothstep' ? 'bg-gray-100' : 'hover:bg-gray-50'
+                          pathType === 'smoothstep' ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50 text-gray-700'
                         )}
                       >
                         Bậc thang (Smoothstep)
@@ -547,7 +661,7 @@ export function RelationshipEdge({
                         onClick={() => handlePathTypeChange('straight')}
                         className={cn(
                           'w-full text-left px-3 py-2 text-sm rounded cursor-pointer transition-colors',
-                          pathType === 'straight' ? 'bg-gray-100' : 'hover:bg-gray-50'
+                          pathType === 'straight' ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50 text-gray-700'
                         )}
                       >
                         Thẳng (Straight)
@@ -557,126 +671,116 @@ export function RelationshipEdge({
                 </div>
 
                 {/* Right Column: Thông tin liên kết */}
-                <div className="border-l pl-4">
-                  <DropdownMenuLabel className="px-0 text-base font-semibold">Thông tin liên kết</DropdownMenuLabel>
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
+                <div className="">
+                  <h4 className="font-medium text-sm text-gray-900 mb-4">Thông tin liên kết</h4>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm text-gray-500 block mb-1.5 font-medium">Tên trường</label>
                         <input
                           type="text"
-                          value={(() => {
-                            const sourceNode = getNode(source);
-                            if (!sourceNode) return '';
-
-                            if (relationshipType === '1-n') {
-                              // Array field: Find virtual field
-                              const field = sourceNode.data.columns.find((col: any) =>
-                                col.isVirtual === true
-                              );
-                              return field?.name || '';
-                            } else {
-                              // Object field: Get from data.objectFieldName
-                              return data?.objectFieldName || '';
-                            }
-                          })()}
-                          readOnly
-                          className="w-full px-3 py-2 text-sm border rounded bg-gray-50 text-gray-900 font-medium"
+                          value={editedFieldName}
+                          onChange={(e) => setEditedFieldName(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border rounded bg-white text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                       </div>
                       <div>
                         <label className="text-sm text-gray-500 block mb-1.5 font-medium">Bảng đích</label>
-                        <input
-                          type="text"
-                          value={(() => {
-                            const targetNode = getNode(target);
-                            return targetNode?.data.label || '';
-                          })()}
-                          readOnly
-                          className="w-full px-2 py-1 text-xs border rounded bg-gray-50 text-gray-700"
-                        />
+                        <select
+                          value={editedTargetId}
+                          onChange={(e) => {
+                            setEditedTargetId(e.target.value);
+                            setEditedTargetKey(''); // Reset key when target changes
+                          }}
+                          className="w-full px-2 py-2 text-sm border rounded bg-white text-gray-700 focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                          {nodes.filter((n: any) => n.id !== source).map((n: any) => (
+                            <option key={n.id} value={n.id}>{n.data.label}</option>
+                          ))}
+                        </select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="text-sm text-gray-500 block mb-1.5 font-medium">
                           {relationshipType === '1-n' ? 'Source (PK)' : 'Source (FK)'}
                         </label>
-                        <input
-                          type="text"
-                          value={(() => {
+                        <select
+                          value={editedSourceKey}
+                          onChange={(e) => setEditedSourceKey(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border rounded bg-white text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                          <option value="">Chọn...</option>
+                          {(() => {
                             const sourceNode = getNode(source);
-                            if (!sourceNode) return 'N/A';
-
-                            if (relationshipType === '1-n') {
-                              // Array field: Find virtual field and get its linkedPrimaryKeyField
-                              const virtualField = sourceNode.data.columns.find((col: any) =>
-                                col.isVirtual === true && getEdges().some(e =>
-                                  e.id === id && e.source === source
-                                )
-                              );
-                              return virtualField?.linkedPrimaryKeyField || 'id';
-                            } else {
-                              // Object field: Find FK field
-                              const fkField = sourceNode.data.columns.find((col: any) =>
-                                col.isForeignKey === true
-                              );
-                              return fkField?.name || 'N/A';
-                            }
+                            return sourceNode?.data.columns.map((col: any) => (
+                              <option key={col.name} value={col.name}>
+                                {col.name} {col.isPrimaryKey ? '(PK)' : ''}
+                              </option>
+                            )) || null;
                           })()}
-                          readOnly
-                          className="w-full px-3 py-2 text-sm border rounded bg-gray-50 text-gray-900 font-medium"
-                        />
+                        </select>
                       </div>
                       <div>
                         <label className="text-sm text-gray-500 block mb-1.5 font-medium">
                           {relationshipType === '1-n' ? 'Target (FK)' : 'Target (PK)'}
                         </label>
-                        <input
-                          type="text"
-                          value={(() => {
-                            const targetNode = getNode(target);
-                            if (!targetNode) return 'N/A';
-
-                            if (relationshipType === '1-n') {
-                              // Array field: Find FK in target
-                              const fkField = targetNode.data.columns.find((col: any) =>
-                                col.isForeignKey === true
-                              );
-                              return fkField?.name || 'N/A';
-                            } else {
-                              // Object field: Get PK from data or find PK field
-                              return data?.primaryKeyField || targetNode.data.columns.find((col: any) =>
-                                col.isPrimaryKey === true
-                              )?.name || 'id';
-                            }
+                        <select
+                          value={editedTargetKey}
+                          onChange={(e) => setEditedTargetKey(e.target.value)}
+                          className="w-full px-3 py-2 text-sm border rounded bg-white text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                        >
+                          <option value="">Chọn...</option>
+                          {(() => {
+                            const targetNode = nodes.find((n: any) => n.id === editedTargetId);
+                            return targetNode?.data.columns.map((col: any) => (
+                              <option key={col.name} value={col.name}>
+                                {col.name} {col.isPrimaryKey ? '(PK)' : ''}
+                              </option>
+                            )) || null;
                           })()}
-                          readOnly
-                          className="w-full px-3 py-2 text-sm border rounded bg-gray-50 text-gray-900 font-medium"
-                        />
+                        </select>
                       </div>
                     </div>
-                    <button
-                      onClick={handleEditEdge}
-                      className="w-full px-3 py-2.5 text-sm bg-blue-50 hover:bg-blue-100 text-blue-700 rounded flex items-center justify-center gap-1.5 transition-colors font-medium"
-                    >
-                      <Edit2 size={14} />
-                      <span>Chỉnh sửa chi tiết</span>
-                    </button>
+
+                    <div className="pt-4 flex flex-col gap-3">
+                      {validationError && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-xs font-medium flex items-center gap-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          {validationError}
+                        </div>
+                      )}
+                      <button
+                        onClick={handleSaveInline}
+                        disabled={!!validationError}
+                        className={cn(
+                          "w-full px-3 py-2.5 text-sm rounded flex items-center justify-center gap-1.5 transition-colors font-medium shadow-sm hover:shadow",
+                          !!validationError
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-blue-600 hover:bg-blue-700 text-white"
+                        )}
+                      >
+                        <Edit2 size={14} />
+                        <span>Lưu thay đổi</span>
+                      </button>
+
+                      <div className="h-px bg-gray-100 my-1" />
+
+                      <button
+                        onClick={handleDeleteEdge}
+                        className="w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded flex items-center justify-center gap-2 transition-colors font-medium"
+                      >
+                        <Trash2 size={14} />
+                        <span>Xóa quan hệ</span>
+                      </button>
+                    </div>
+
                   </div>
                 </div>
               </div>
 
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDeleteEdge}
-                className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
-              >
-                <Trash2 size={14} className="mr-2" />
-                <span className="text-sm font-medium">Xóa quan hệ</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </DialogContent>
+          </Dialog>
         </div>
       </foreignObject>
     </g>

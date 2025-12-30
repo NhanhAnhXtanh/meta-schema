@@ -22,14 +22,14 @@ interface LinkFieldDialogProps {
     sourceKey: string,
     targetKey: string,
     newFieldName: string,
-    type: '1-n' | 'n-1'
+    type: '1-n' | 'n-1' | '1-1'
   ) => void;
   initialValues?: {
     targetNodeId: string;
     sourceKey: string;
     targetKey: string;
     fieldName: string;
-    linkType: '1-n' | 'n-1';
+    linkType: '1-n' | 'n-1' | '1-1';
   };
   isEditMode?: boolean;
 }
@@ -48,7 +48,7 @@ export function LinkFieldDialog({
   const [selectedSourceKey, setSelectedSourceKey] = useState<string>('');
   const [selectedTargetKey, setSelectedTargetKey] = useState<string>('');
   const [newFieldName, setNewFieldName] = useState<string>('');
-  const [linkType, setLinkType] = useState<'1-n' | 'n-1'>('1-n');
+  const [linkType, setLinkType] = useState<'1-n' | 'n-1' | '1-1'>('1-n');
 
   // Populate form when editing
   useEffect(() => {
@@ -120,11 +120,27 @@ export function LinkFieldDialog({
     onOpenChange(false);
   };
 
+  const validationError = useMemo(() => {
+    if (!selectedSourceKey || !selectedTargetKey || !selectedTargetNodeId) return null;
+
+    const sourceCol = sourceNode?.data.columns.find(c => c.name === selectedSourceKey);
+    const targetNode = availableTargetNodes.find(n => n.id === selectedTargetNodeId);
+    const targetCol = targetNode?.data.columns.find(c => c.name === selectedTargetKey);
+
+    if (sourceCol && targetCol) {
+      if (sourceCol.type !== targetCol.type) {
+        return `Kiểu dữ liệu không khớp: ${sourceCol.name} (${sourceCol.type}) ≠ ${targetCol.name} (${targetCol.type})`;
+      }
+    }
+    return null;
+  }, [selectedSourceKey, selectedTargetKey, selectedTargetNodeId, sourceNode, availableTargetNodes]);
+
   const isFormValid =
     selectedTargetNodeId &&
     selectedSourceKey &&
     selectedTargetKey &&
-    newFieldName.trim();
+    newFieldName.trim() &&
+    !validationError;
 
   const isArray = linkType === '1-n';
 
@@ -139,26 +155,38 @@ export function LinkFieldDialog({
         </DialogHeader>
 
         <div className="space-y-4 mt-4">
-          {/* Loại Link & Data Type */}
+          {/* Data Type & Relationship Type */}
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Kiểu Dữ Liệu</label>
+              <select
+                value={linkType === '1-n' ? 'array' : 'object'}
+                onChange={(e) => {
+                  const type = e.target.value as 'array' | 'object';
+                  if (type === 'array') {
+                    setLinkType('1-n');
+                  } else {
+                    setLinkType('n-1'); // Default to n-1 for object
+                  }
+                }}
+                className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+              >
+                <option value="array">Array (Danh sách)</option>
+                <option value="object">Object (Đối tượng)</option>
+              </select>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Loại Liên Kết</label>
               <select
                 value={linkType}
-                onChange={(e) => setLinkType(e.target.value as '1-n' | 'n-1')}
+                onChange={(e) => setLinkType(e.target.value as '1-n' | 'n-1' | '1-1')}
                 className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <option value="1-n">1 - Nhiều (One to Many)</option>
                 <option value="n-1">Nhiều - 1 (Many to One)</option>
+                <option value="1-1">1 - 1 (One to One)</option>
               </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Kiểu Dữ Liệu</label>
-              <Input
-                disabled
-                value={linkType === '1-n' ? 'array' : 'object'}
-                className="bg-gray-100 text-gray-600 font-mono"
-              />
             </div>
           </div>
 
@@ -237,6 +265,13 @@ export function LinkFieldDialog({
               className="bg-white border-gray-300 text-gray-900"
             />
           </div>
+
+          {validationError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded text-red-600 text-sm font-medium flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+              {validationError}
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="flex gap-2 justify-end pt-4 border-t border-gray-100">

@@ -94,7 +94,7 @@ export function Sidebar() {
     const resize = (e: MouseEvent) => {
         if (sidebarRef.current) {
             const newWidth = e.clientX - sidebarRef.current.getBoundingClientRect().left;
-            if (newWidth > 200 && newWidth < 800) {
+            if (newWidth > 250 && newWidth < 800) {
                 setWidth(newWidth);
             }
         }
@@ -107,7 +107,7 @@ export function Sidebar() {
             style={{ width: `${width}px` }}
         >
             <SidebarHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
                 {filteredNodes.map(node => (
                     <SidebarItem
                         key={node.id}

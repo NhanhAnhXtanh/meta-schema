@@ -45,7 +45,7 @@ export function SchemaDialogs() {
     }, [dispatch]);
 
     // Handlers
-    const handleLinkFieldConfirm = (targetNodeId: string, sourceKey: string, targetKey: string, newFieldName: string, type: '1-n' | 'n-1') => {
+    const handleLinkFieldConfirm = (targetNodeId: string, sourceKey: string, targetKey: string, newFieldName: string, type: '1-n' | 'n-1' | '1-1') => {
         if (linkFieldDialogState.sourceNodeId) {
             // 1. If Edit Mode, delete field first to cleanup old definition
             if (linkFieldDialogState.isEditMode && linkFieldDialogState.fieldIndex !== undefined) {
@@ -66,12 +66,14 @@ export function SchemaDialogs() {
                     newFieldName
                 }));
             } else {
+                // n-1 or 1-1
                 dispatch(confirmLinkObject({
                     sourceNodeId: linkFieldDialogState.sourceNodeId,
                     targetNodeId,
                     sourceFK: sourceKey,
                     targetPK: targetKey,
-                    newFieldName
+                    newFieldName,
+                    relationshipType: type as 'n-1' | '1-1'
                 }));
             }
             dispatch(closeLinkFieldDialog());

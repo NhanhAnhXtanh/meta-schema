@@ -115,7 +115,7 @@ const SidebarFieldBase = ({
                     "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-200",
                     isDragging && "opacity-50",
                     isDragOver && "border-blue-500 bg-blue-50",
-                    field.isVirtual === true && "bg-green-50 hover:bg-green-100",
+                    field.isVirtual === true && "bg-amber-50 hover:bg-amber-100 border-amber-200/50",
                     field.isVirtual !== true && field.type !== 'object' && "bg-gray-100 hover:bg-gray-150"
                 )}
             >
@@ -162,7 +162,7 @@ const SidebarFieldBase = ({
                         </span>
                     )}
                     {hasNestedFields && targetNode && (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded border border-blue-200">
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded border border-blue-200 min-w-0 max-w-[120px]">
                             {/* Toggle Board Visibility of Linked Table */}
                             <input
                                 type="checkbox"
@@ -174,10 +174,10 @@ const SidebarFieldBase = ({
                                         dispatch(addVisibleNodeId(targetNode.id));
                                     }
                                 }}
-                                className="w-3 h-3 cursor-pointer accent-blue-600"
+                                className="w-3 h-3 cursor-pointer accent-blue-600 flex-shrink-0"
                                 title="Show/Hide Table on Board"
                             />
-                            <span className="text-xs text-blue-600 font-medium whitespace-nowrap cursor-pointer hover:underline" onClick={() => !isTargetVisible && dispatch(addVisibleNodeId(targetNode.id))}>
+                            <span className="text-xs text-blue-600 font-medium truncate block" onClick={() => !isTargetVisible && dispatch(addVisibleNodeId(targetNode.id))}>
                                 : {targetNode.data.label}
                             </span>
                         </div>
@@ -185,10 +185,11 @@ const SidebarFieldBase = ({
                 </div>
 
                 {/* Only show controls for virtual/object fields */}
+                {/* Only show controls for virtual/object fields */}
                 {(field.isVirtual === true || field.type === 'object') && (
-                    <>
-                        <div className="flex items-center gap-1.5 ml-2">
-                            <span className="text-[10px] text-gray-900 font-bold font-mono tracking-tighter max-w-[50px] overflow-hidden text-ellipsis mr-1">
+                    <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+                        <div className="flex items-center gap-1 mr-1">
+                            <span className="text-[10px] text-gray-900 font-bold font-mono tracking-tighter max-w-[60px] truncate" title={targetNode ? targetNode.data.label : field.type}>
                                 {targetNode ? targetNode.data.label : field.type}
                             </span>
 
@@ -203,39 +204,41 @@ const SidebarFieldBase = ({
                         </div>
 
                         {/* Key Toggles for Virtual Fields */}
-                        <button
-                            onClick={() => {
-                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { isNotNull: !field.isNotNull } }));
-                            }}
-                            className={cn(
-                                "h-7 w-7 flex items-center justify-center rounded transition-colors font-bold text-[10px]",
-                                field.isNotNull ? "text-red-500 bg-red-50" : "text-gray-400 hover:text-gray-600"
-                            )}
-                            title="Not Null"
-                        >N</button>
+                        <div className="flex items-center gap-0.5">
+                            <button
+                                onClick={() => {
+                                    dispatch(updateField({ nodeId, fieldIndex: index, updates: { isNotNull: !field.isNotNull } }));
+                                }}
+                                className={cn(
+                                    "h-6 w-6 flex items-center justify-center rounded transition-colors font-bold text-[10px]",
+                                    field.isNotNull ? "text-red-500 bg-red-50" : "text-gray-400 hover:text-gray-600"
+                                )}
+                                title="Not Null"
+                            >N</button>
 
-                        <button
-                            onClick={() => {
-                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }));
-                            }}
-                            className={cn(
-                                "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                field.isPrimaryKey ? "text-orange-500 bg-orange-50" : "text-gray-400 hover:text-gray-600"
-                            )}
-                            title="Primary Key"
-                        ><Key className="w-4 h-4" /></button>
+                            <button
+                                onClick={() => {
+                                    dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }));
+                                }}
+                                className={cn(
+                                    "h-6 w-6 flex items-center justify-center rounded transition-colors",
+                                    field.isPrimaryKey ? "text-orange-500 bg-orange-50" : "text-gray-400 hover:text-gray-600"
+                                )}
+                                title="Primary Key"
+                            ><Key className="w-3.5 h-3.5" /></button>
 
-                        <button
-                            onClick={() => {
-                                dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }));
-                            }}
-                            className={cn(
-                                "h-7 w-7 flex items-center justify-center rounded transition-colors",
-                                field.isForeignKey ? "text-blue-500 bg-blue-50" : "text-gray-400 hover:text-gray-600"
-                            )}
-                            title="Foreign Key"
-                        ><Link2 className="w-4 h-4" /></button>
-                    </>
+                            <button
+                                onClick={() => {
+                                    dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }));
+                                }}
+                                className={cn(
+                                    "h-6 w-6 flex items-center justify-center rounded transition-colors",
+                                    field.isForeignKey ? "text-blue-500 bg-blue-50" : "text-gray-400 hover:text-gray-600"
+                                )}
+                                title="Foreign Key"
+                            ><Link2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                    </div>
                 )}
 
                 {/* For base fields, just show type as read-only text */}

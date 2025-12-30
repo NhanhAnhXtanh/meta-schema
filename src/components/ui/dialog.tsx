@@ -1,4 +1,5 @@
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 
 interface DialogProps {
@@ -16,12 +17,12 @@ const DialogContext = React.createContext<{
   onOpenChange: (open: boolean) => void
 }>({
   open: false,
-  onOpenChange: () => {},
+  onOpenChange: () => { },
 })
 
 const Dialog = ({ open = false, onOpenChange, children }: DialogProps) => {
   return (
-    <DialogContext.Provider value={{ open, onOpenChange: onOpenChange || (() => {}) }}>
+    <DialogContext.Provider value={{ open, onOpenChange: onOpenChange || (() => { }) }}>
       {children}
     </DialogContext.Provider>
   )
@@ -53,7 +54,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
 
     if (!open) return null
 
-    return (
+    return createPortal(
       <div
         className="fixed inset-0 z-50 flex items-center justify-center"
         onClick={() => onOpenChange(false)}
@@ -70,7 +71,8 @@ const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
           {children}
         </div>
         <div className="fixed inset-0 bg-black/50" />
-      </div>
+      </div>,
+      document.body
     )
   }
 )
