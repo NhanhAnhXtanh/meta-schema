@@ -177,6 +177,10 @@ const schemaSlice = createSlice({
         },
         onConnect: (state, action: PayloadAction<Connection>) => {
             const { source, target, sourceHandle, targetHandle } = action.payload;
+
+            // Prevent self-connections
+            if (source === target) return;
+
             if (source && target && sourceHandle && targetHandle) {
                 const edgeId = `${source}-${sourceHandle}-to-${target}-${targetHandle}`;
 
