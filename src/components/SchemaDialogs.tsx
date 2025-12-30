@@ -25,7 +25,7 @@ export function SchemaDialogs() {
     const objectConnectionState = useAppSelector(state => state.ui.objectConnectionDialog);
 
     // Data for Dialogs
-    const nodes = useAppSelector(state => state.schema.nodes);
+    const nodes = useAppSelector(state => state.schema.present.nodes);
     const visibleNodeIdsArr = useAppSelector(state => state.ui.visibleNodeIds);
     const visibleNodeIds = new Set(visibleNodeIdsArr);
 

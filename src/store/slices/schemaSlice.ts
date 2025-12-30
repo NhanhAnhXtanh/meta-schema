@@ -209,9 +209,10 @@ const schemaSlice = createSlice({
         },
 
         // Table operations
-        addTable: (state, action: PayloadAction<{ name: string; columns: TableColumn[] }>) => {
-            const { name, columns } = action.payload;
-            const newId = String(state.nodes.length + 1); // Simple ID generation
+        addTable: (state, action: PayloadAction<{ id?: string; name: string; columns: TableColumn[] }>) => {
+            const { id, name, columns } = action.payload;
+            // Use provided ID or fallback to auto-increment logic (legacy support)
+            const newId = id || String(state.nodes.length + 1);
             const defaultColor = COLOR_OPTIONS[state.nodes.length % COLOR_OPTIONS.length];
 
             const newTable: Node<TableNodeData> = {
@@ -224,7 +225,8 @@ const schemaSlice = createSlice({
                 data: {
                     label: name,
                     columns: columns.map(c => ({ ...c, visible: true })),
-                    color: defaultColor
+                    color: defaultColor,
+                    _version: Date.now()
                 }
             };
             state.nodes.push(newTable);

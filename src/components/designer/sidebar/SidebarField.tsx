@@ -53,8 +53,8 @@ const SidebarFieldBase = ({
     }, [localName, nodeId, index, dispatch, field.name, field.isVirtual, field.type]);
 
 
-    const edges = useAppSelector(state => state.schema.edges);
-    const nodes = useAppSelector(state => state.schema.nodes);
+    const edges = useAppSelector(state => state.schema.present.edges);
+    const nodes = useAppSelector(state => state.schema.present.nodes);
 
     // Find linked table name if virtual
     let linkedTableName = '';

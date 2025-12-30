@@ -11,7 +11,7 @@ interface NestedFieldsListProps {
 
 export function NestedFieldsList({ nodeId }: NestedFieldsListProps) {
     const dispatch = useAppDispatch();
-    const node = useAppSelector(state => state.schema.nodes.find(n => n.id === nodeId));
+    const node = useAppSelector(state => state.schema.present.nodes.find(n => n.id === nodeId));
 
     // Field DnD state
     const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);

@@ -9,8 +9,8 @@ import { SidebarItem } from './SidebarItem';
 
 export function Sidebar() {
     const dispatch = useAppDispatch();
-    const nodes = useAppSelector(state => state.schema.nodes);
-    const edges = useAppSelector(state => state.schema.edges);
+    const nodes = useAppSelector(state => state.schema.present.nodes);
+    const edges = useAppSelector(state => state.schema.present.edges);
     const visibleNodeIds = useAppSelector(state => state.ui.visibleNodeIds);
     const selectedNodeId = useAppSelector(state => state.ui.selectedNodeId);
 

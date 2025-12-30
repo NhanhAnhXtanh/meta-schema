@@ -45,8 +45,8 @@ function NodeUpdater() {
 
 export function FlowCanvas() {
     const dispatch = useAppDispatch();
-    const nodes = useAppSelector((state) => state.schema.nodes);
-    const edges = useAppSelector((state) => state.schema.edges);
+    const nodes = useAppSelector((state) => state.schema.present.nodes);
+    const edges = useAppSelector((state) => state.schema.present.edges);
     const visibleNodeIds = useAppSelector((state) => state.ui.visibleNodeIds);
 
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);

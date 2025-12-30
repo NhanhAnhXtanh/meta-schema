@@ -38,8 +38,8 @@ const edgeTypes: EdgeTypes = {
 
 export function Canvas() {
     const dispatch = useAppDispatch();
-    const nodes = useAppSelector((state) => state.schema.nodes);
-    const edges = useAppSelector((state) => state.schema.edges);
+    const nodes = useAppSelector((state) => state.schema.present.nodes);
+    const edges = useAppSelector((state) => state.schema.present.edges);
     const visibleNodeIds = useAppSelector((state) => state.ui.visibleNodeIds);
     const updateNodeInternals = useUpdateNodeInternals();
 

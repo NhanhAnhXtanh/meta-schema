@@ -1,8 +1,10 @@
-import { Plus, Search } from 'lucide-react';
+import { useEffect } from 'react';
+import { Plus, Search, Undo2, Redo2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useAppDispatch } from '@/store/hooks';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { setAddTableDialogOpen } from '@/store/slices/uiSlice';
+import { ActionCreators } from 'redux-undo';
 
 interface SidebarHeaderProps {
     searchQuery: string;
@@ -12,23 +14,77 @@ interface SidebarHeaderProps {
 export function SidebarHeader({ searchQuery, setSearchQuery }: SidebarHeaderProps) {
     const dispatch = useAppDispatch();
 
+    // Undo/Redo State
+    // Note: We need to cast or access via unknown if RootState type inference isn't perfect, 
+    // but toolkit usually handles it.
+    const canUndo = useAppSelector(state => state.schema.past.length > 0);
+    const canRedo = useAppSelector(state => state.schema.future.length > 0);
+
+    // Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Check if user is typing in an input
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+                return;
+            }
+
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                if (e.shiftKey) {
+                    dispatch(ActionCreators.redo());
+                } else {
+                    dispatch(ActionCreators.undo());
+                }
+                e.preventDefault();
+            }
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+                dispatch(ActionCreators.redo());
+                e.preventDefault();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [dispatch]);
+
     return (
         <div className="p-4 border-b border-gray-200 space-y-3 bg-white sticky top-0 z-10">
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                     <span>Tables</span>
-                    <span className="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500 font-normal">
-                        Beta
-                    </span>
                 </h2>
-                <Button
-                    size="sm"
-                    onClick={() => dispatch(setAddTableDialogOpen(true))}
-                    className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-2"
-                >
-                    <Plus className="w-4 h-4 mr-1" />
-                    Add Table
-                </Button>
+
+                {/* Actions Toolbar */}
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        disabled={!canUndo}
+                        onClick={() => dispatch(ActionCreators.undo())}
+                        title="Undo (Ctrl+Z)"
+                    >
+                        <Undo2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        disabled={!canRedo}
+                        onClick={() => dispatch(ActionCreators.redo())}
+                        title="Redo (Ctrl+Y)"
+                    >
+                        <Redo2 className="w-4 h-4" />
+                    </Button>
+                    <div className="w-px h-4 bg-gray-300 mx-1" />
+                    <Button
+                        size="sm"
+                        onClick={() => dispatch(setAddTableDialogOpen(true))}
+                        className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-2 text-xs"
+                    >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Add
+                    </Button>
+                </div>
             </div>
             <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />

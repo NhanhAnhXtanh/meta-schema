@@ -54,8 +54,8 @@ export function useFieldOperations(nodeId: string) {
  * Hook for getting linked node information
  */
 export function useLinkedNode(nodeId: string, field: TableColumn) {
-    const edges = useAppSelector(state => state.schema.edges);
-    const nodes = useAppSelector(state => state.schema.nodes);
+    const edges = useAppSelector(state => state.schema.present.edges);
+    const nodes = useAppSelector(state => state.schema.present.nodes);
 
     return useMemo(() => {
         const targetNode = SchemaService.getLinkedTargetNode(nodeId, field, edges, nodes);
@@ -71,8 +71,8 @@ export function useLinkedNode(nodeId: string, field: TableColumn) {
  * Hook for node hierarchy operations
  */
 export function useNodeHierarchy() {
-    const nodes = useAppSelector(state => state.schema.nodes);
-    const edges = useAppSelector(state => state.schema.edges);
+    const nodes = useAppSelector(state => state.schema.present.nodes);
+    const edges = useAppSelector(state => state.schema.present.edges);
 
     const rootNodes = useMemo(() =>
         SchemaService.getRootNodes(nodes, edges),
@@ -100,7 +100,7 @@ export function useNodeHierarchy() {
  * Hook for field validation
  */
 export function useFieldValidation(nodeId: string) {
-    const nodes = useAppSelector(state => state.schema.nodes);
+    const nodes = useAppSelector(state => state.schema.present.nodes);
 
     const isFieldNameUnique = useCallback((fieldName: string, excludeIndex?: number) => {
         const node = nodes.find(n => n.id === nodeId);
@@ -131,7 +131,7 @@ export function useFieldValidation(nodeId: string) {
  * Hook for getting visible nodes
  */
 export function useVisibleNodes() {
-    const nodes = useAppSelector(state => state.schema.nodes);
+    const nodes = useAppSelector(state => state.schema.present.nodes);
     const visibleNodeIds = useAppSelector(state => state.ui.visibleNodeIds);
 
     return useMemo(() =>
