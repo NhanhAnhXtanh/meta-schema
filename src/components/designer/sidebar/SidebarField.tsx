@@ -98,16 +98,17 @@ export function SidebarField({
                     field.isVirtual !== true && field.type !== 'object' && "bg-gray-100 hover:bg-gray-150"
                 )}
             >
+                {/* Drag Handle - Always visible */}
+                <GripVertical className="w-3 h-3 text-gray-400 cursor-move hover:text-gray-600 transition-colors flex-shrink-0" />
+
                 {/* Expansion Toggle */}
-                {hasNestedFields ? (
+                {hasNestedFields && (
                     <button
                         onClick={() => setIsExpanded(!isExpanded)}
-                        className="p-0.5 hover:bg-gray-200 rounded text-gray-500"
+                        className="p-0.5 hover:bg-gray-200 rounded text-gray-500 flex-shrink-0"
                     >
                         {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                     </button>
-                ) : (
-                    <GripVertical className="w-3 h-3 text-gray-400 cursor-move hover:text-gray-600 transition-colors" />
                 )}
 
                 {/* Visibility -> For nested parent, we keep it simple */}

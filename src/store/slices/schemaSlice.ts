@@ -254,7 +254,27 @@ const schemaSlice = createSlice({
             const { nodeId, fieldIndex, updates } = action.payload;
             const node = state.nodes.find(n => n.id === nodeId);
             if (node && node.data.columns[fieldIndex]) {
-                node.data.columns[fieldIndex] = { ...node.data.columns[fieldIndex], ...updates };
+                const oldField = node.data.columns[fieldIndex];
+                const oldName = oldField.name;
+
+                // Update the field
+                node.data.columns[fieldIndex] = { ...oldField, ...updates };
+
+                // If name changed, update edges that reference this field
+                if (updates.name && updates.name !== oldName) {
+                    const newName = updates.name;
+
+                    // Update edges where this field is the source handle (1-n array fields)
+                    state.edges.forEach(edge => {
+                        if (edge.source === nodeId && edge.sourceHandle === oldName) {
+                            edge.sourceHandle = newName;
+                        }
+                        // Update edges where this field is the target handle
+                        if (edge.target === nodeId && edge.targetHandle === oldName) {
+                            edge.targetHandle = newName;
+                        }
+                    });
+                }
             }
         },
         toggleFieldVisibility: (state, action: PayloadAction<{ nodeId: string; fieldIndex: number }>) => {
@@ -342,10 +362,45 @@ const schemaSlice = createSlice({
         },
         reorderFields: (state, action: PayloadAction<{ nodeId: string; oldIndex: number; newIndex: number }>) => {
             const { nodeId, oldIndex, newIndex } = action.payload;
-            const node = state.nodes.find(n => n.id === nodeId);
-            if (node) {
-                const [removed] = node.data.columns.splice(oldIndex, 1);
-                node.data.columns.splice(newIndex, 0, removed);
+            console.log('📦 reorderFields:', { nodeId, oldIndex, newIndex });
+
+            const nodeIndex = state.nodes.findIndex(n => n.id === nodeId);
+            if (nodeIndex !== -1) {
+                const node = state.nodes[nodeIndex];
+                const newColumns = [...node.data.columns];
+                const movedField = newColumns[oldIndex];
+                console.log('  → Moving field:', movedField?.name, 'from', oldIndex, 'to', newIndex);
+
+                const [removed] = newColumns.splice(oldIndex, 1);
+                newColumns.splice(newIndex, 0, removed);
+
+                console.log('  → New column order:', newColumns.map(c => c.name).join(', '));
+
+                // Create new node object with version
+                const updatedNode = {
+                    ...node,
+                    data: {
+                        ...node.data,
+                        columns: newColumns,
+                        _version: Date.now()
+                    }
+                };
+
+                // Create new nodes array to trigger Redux selector
+                state.nodes = state.nodes.map((n, idx) => idx === nodeIndex ? updatedNode : n);
+                console.log('  → Created new nodes array');
+
+                // Force edges to recreate by creating new edge objects
+                const affectedEdges = state.edges.filter(edge => edge.source === nodeId || edge.target === nodeId);
+                console.log('  → Recreating', affectedEdges.length, 'edges');
+
+                state.edges = state.edges.map(edge => {
+                    if (edge.source === nodeId || edge.target === nodeId) {
+                        console.log('    → Edge:', edge.id, 'sourceHandle:', edge.sourceHandle, 'targetHandle:', edge.targetHandle);
+                        return { ...edge };
+                    }
+                    return edge;
+                });
             }
         },
 
@@ -386,6 +441,16 @@ const schemaSlice = createSlice({
                 type: 'relationship',
                 data: { relationshipType: '1-n' }
             });
+
+            // Force nodes update to trigger React Flow handle recompute
+            const sourceIndex = state.nodes.findIndex(n => n.id === sourceNodeId);
+            if (sourceIndex !== -1) {
+                state.nodes[sourceIndex] = { ...state.nodes[sourceIndex] };
+            }
+            const targetIndex = state.nodes.findIndex(n => n.id === targetNodeId);
+            if (targetIndex !== -1) {
+                state.nodes[targetIndex] = { ...state.nodes[targetIndex] };
+            }
         },
 
         confirmLinkObject: (state, action: PayloadAction<{
@@ -441,6 +506,16 @@ const schemaSlice = createSlice({
                             objectFieldName: newFieldName
                         }
                     });
+                }
+
+                // Force nodes update to trigger React Flow handle recompute
+                const sourceIndex = state.nodes.findIndex(n => n.id === sourceNodeId);
+                if (sourceIndex !== -1) {
+                    state.nodes[sourceIndex] = { ...state.nodes[sourceIndex] };
+                }
+                const targetIndex = state.nodes.findIndex(n => n.id === targetNodeId);
+                if (targetIndex !== -1) {
+                    state.nodes[targetIndex] = { ...state.nodes[targetIndex] };
                 }
             }
         },

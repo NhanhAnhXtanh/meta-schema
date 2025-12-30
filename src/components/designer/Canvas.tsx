@@ -10,6 +10,7 @@ import {
     EdgeTypes,
     ReactFlowInstance,
     OnConnect,
+    useUpdateNodeInternals,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -40,6 +41,9 @@ export function Canvas() {
     const nodes = useAppSelector((state) => state.schema.nodes);
     const edges = useAppSelector((state) => state.schema.edges);
     const visibleNodeIds = useAppSelector((state) => state.ui.visibleNodeIds);
+    const updateNodeInternals = useUpdateNodeInternals();
+
+    console.log('🎨 Canvas render - nodes:', nodes.length, 'edges:', edges.length);
 
     // Filter nodes based on visibility
     const visibleNodes = nodes.filter(node => visibleNodeIds.includes(node.id));
@@ -106,6 +110,20 @@ export function Canvas() {
         },
         [dispatch]
     );
+
+    // Force React Flow to update node internals when nodes change
+    // This ensures handle positions are recomputed after field reordering
+    // Use version sum to detect any node change
+    const nodesVersion = nodes.reduce((sum, node) => sum + ((node.data as any)._version || 0), 0);
+    console.log('🔢 Computed nodesVersion:', nodesVersion);
+
+    useEffect(() => {
+        console.log('🔄 Nodes version changed:', nodesVersion, '- updating internals for', nodes.length, 'nodes');
+        nodes.forEach(node => {
+            console.log('  → Updating node:', node.id, 'columns:', node.data.columns.length, 'version:', (node.data as any)._version);
+            updateNodeInternals(node.id);
+        });
+    }, [nodesVersion, nodes.length, updateNodeInternals]);
 
     // Replacement for CustomEvent 'addField' listener in App.tsx
     // We will instead handle this inside the TableNode component directly if possible, 

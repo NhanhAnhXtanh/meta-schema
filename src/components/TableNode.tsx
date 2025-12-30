@@ -21,13 +21,13 @@ export interface TableNodeData {
 
 export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
   const headerColor = data.color || '#3b82f6';
-  
+
   const handleAddField = () => {
     // Dispatch custom event để App.tsx có thể listen
     const event = new CustomEvent('addField', { detail: { nodeId: id } });
     window.dispatchEvent(event);
   };
-  
+
   return (
     <div
       className={cn(
@@ -35,7 +35,7 @@ export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
         selected ? 'border-primary' : 'border-gray-300'
       )}
     >
-      <div 
+      <div
         className="text-white px-4 py-2 font-bold rounded-t-lg"
         style={{ backgroundColor: headerColor }}
       >
@@ -44,7 +44,7 @@ export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
       <div className="divide-y">
         {data.columns.filter(col => col.visible !== false).map((column, index) => (
           <div
-            key={index}
+            key={column.name}
             className={cn(
               'px-4 py-2 text-sm flex items-center gap-2 relative',
               column.isPrimaryKey && 'bg-yellow-50',
@@ -58,16 +58,16 @@ export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
               position={Position.Left}
               id={column.name}
               className="react-flow-handle-target !w-4 !h-4 !bg-gray-400 !border-2 !border-white !-left-2 !transition-colors !duration-200 hover:!bg-green-500 !z-10"
-              style={{ 
-                top: '50%', 
+              style={{
+                top: '50%',
                 transform: 'translateY(-50%)',
                 pointerEvents: 'all'
               }}
             />
-            
+
             {/* Field name */}
             <span className="font-medium text-gray-900 pointer-events-none">{column.name || ''}</span>
-            
+
             {/* Field type hoặc linked PK */}
             {column.isVirtual && column.linkedPrimaryKeyField ? (
               <span className="text-gray-500 text-xs flex items-center gap-1 pointer-events-none">
@@ -82,7 +82,7 @@ export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
             ) : (
               <span className="text-gray-500 text-xs pointer-events-none">{column.type}</span>
             )}
-            
+
             {/* Badges */}
             <div className="flex gap-1 items-center ml-auto pointer-events-none">
               {column.isVirtual && (
@@ -113,22 +113,22 @@ export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
                 </>
               )}
             </div>
-            
+
             {/* Source Handle - Bên phải */}
             <Handle
               type="source"
               position={Position.Right}
               id={column.name}
               className="react-flow-handle-source !w-4 !h-4 !bg-gray-400 !border-2 !border-white !-right-2 !transition-colors !duration-200 hover:!bg-green-500 !z-10"
-              style={{ 
-                top: '50%', 
+              style={{
+                top: '50%',
                 transform: 'translateY(-50%)',
                 pointerEvents: 'all'
               }}
             />
           </div>
         ))}
-        
+
         {/* Button thêm field */}
         <div className="px-4 py-2 border-t border-gray-200">
           <button
@@ -148,8 +148,8 @@ export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {
           position={Position.Bottom}
           id="object-target"
           className="react-flow-handle-object-target !w-6 !h-6 !bg-purple-500 !border-2 !border-white !-bottom-3 !transition-colors !duration-200 hover:!bg-purple-600 !z-10 !rounded-full"
-          style={{ 
-            left: '50%', 
+          style={{
+            left: '50%',
             transform: 'translateX(-50%)',
             pointerEvents: 'all'
           }}
