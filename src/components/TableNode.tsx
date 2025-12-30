@@ -17,6 +17,7 @@ export interface TableNodeData {
     relationshipType?: '1-n' | 'n-1' | '1-1' | 'n-n'; // Loại quan hệ
   }>;
   color?: string;
+  _version?: number; // Timestamp for tracking node changes (used for React Flow handle updates)
 }
 
 export function TableNode({ data, selected, id }: NodeProps<TableNodeData>) {

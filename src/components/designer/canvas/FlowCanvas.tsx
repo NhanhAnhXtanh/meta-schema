@@ -25,19 +25,20 @@ const edgeTypes: EdgeTypes = {
 };
 
 // Component to update node internals - must be inside ReactFlow
+// Only updates nodes that have been modified (have _version timestamp)
 function NodeUpdater() {
     const updateNodeInternals = useUpdateNodeInternals();
     const nodes = useNodes();
 
-    const nodesVersion = nodes.reduce((sum, node) => sum + ((node.data as any)._version || 0), 0);
+    const nodesVersion = nodes.reduce((sum, node) => sum + (node.data._version || 0), 0);
 
     useEffect(() => {
-        console.log('🔄 Nodes version changed:', nodesVersion, '- updating internals for', nodes.length, 'nodes');
-        nodes.forEach(node => {
-            console.log('  → Updating node:', node.id, 'columns:', node.data.columns?.length, 'version:', (node.data as any)._version);
+        // Only update nodes that have _version (recently modified)
+        const nodesToUpdate = nodes.filter(n => n.data._version);
+        nodesToUpdate.forEach(node => {
             updateNodeInternals(node.id);
         });
-    }, [nodesVersion, nodes.length, updateNodeInternals]);
+    }, [nodesVersion, updateNodeInternals]);
 
     return null;
 }

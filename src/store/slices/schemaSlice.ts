@@ -362,19 +362,13 @@ const schemaSlice = createSlice({
         },
         reorderFields: (state, action: PayloadAction<{ nodeId: string; oldIndex: number; newIndex: number }>) => {
             const { nodeId, oldIndex, newIndex } = action.payload;
-            console.log('📦 reorderFields:', { nodeId, oldIndex, newIndex });
 
             const nodeIndex = state.nodes.findIndex(n => n.id === nodeId);
             if (nodeIndex !== -1) {
                 const node = state.nodes[nodeIndex];
                 const newColumns = [...node.data.columns];
-                const movedField = newColumns[oldIndex];
-                console.log('  → Moving field:', movedField?.name, 'from', oldIndex, 'to', newIndex);
-
                 const [removed] = newColumns.splice(oldIndex, 1);
                 newColumns.splice(newIndex, 0, removed);
-
-                console.log('  → New column order:', newColumns.map(c => c.name).join(', '));
 
                 // Create new node object with version
                 const updatedNode = {
@@ -388,15 +382,10 @@ const schemaSlice = createSlice({
 
                 // Create new nodes array to trigger Redux selector
                 state.nodes = state.nodes.map((n, idx) => idx === nodeIndex ? updatedNode : n);
-                console.log('  → Created new nodes array');
 
                 // Force edges to recreate by creating new edge objects
-                const affectedEdges = state.edges.filter(edge => edge.source === nodeId || edge.target === nodeId);
-                console.log('  → Recreating', affectedEdges.length, 'edges');
-
                 state.edges = state.edges.map(edge => {
                     if (edge.source === nodeId || edge.target === nodeId) {
-                        console.log('    → Edge:', edge.id, 'sourceHandle:', edge.sourceHandle, 'targetHandle:', edge.targetHandle);
                         return { ...edge };
                     }
                     return edge;
