@@ -5,10 +5,9 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableNodeData } from '@/types/schema';
 import { useAppDispatch } from '@/store/hooks';
-import { updateTable, deleteTable, reorderFields, addField } from '@/store/slices/schemaSlice';
+import { updateTable, deleteTable, reorderFields, addTable } from '@/store/slices/schemaSlice';
 import { setSelectedNodeId, openLinkFieldDialog } from '@/store/slices/uiSlice';
 import { SidebarField } from './SidebarField';
-import { Button } from '@/components/ui/button';
 
 interface SidebarItemProps {
     node: Node<TableNodeData>;
@@ -107,7 +106,6 @@ const SidebarItemBase = ({
 
                     <GripVertical className="w-4 h-4 text-gray-400 mr-2 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                    {/* Node Name */}
                     <div className="flex-1 cursor-pointer py-3 min-w-0" onClick={() => {
                         dispatch(setSelectedNodeId(node.id));
                         // Dispatch event to fly to node on canvas
@@ -124,9 +122,16 @@ const SidebarItemBase = ({
                                 onClick={e => e.stopPropagation()}
                             />
                         ) : (
-                            <span className="text-sm font-medium text-gray-700 truncate block" title={node.data.label}>
-                                {node.data.label}
-                            </span>
+                            <div>
+                                <span className="text-sm font-medium text-gray-700 truncate block" title={node.data.label}>
+                                    {node.data.label}
+                                </span>
+                                <div className="text-[10px] text-gray-500 mt-0.5 flex items-center gap-1.5">
+                                    <span>ID: {node.id}</span>
+                                    <span>•</span>
+                                    <span>Type: {node.data.tableName || node.data.label}</span>
+                                </div>
+                            </div>
                         )}
                     </div>
 
@@ -143,7 +148,17 @@ const SidebarItemBase = ({
                                         <Edit2 className="w-3 h-3" /> Rename
                                     </button>
                                     {/* Add Color Picker here if needed */}
-                                    <button onClick={() => { dispatch(deleteTable(node.id)); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2">
+                                    <button onClick={() => {
+                                        dispatch(addTable({
+                                            name: `${node.data.label} (Instance)`,
+                                            tableName: node.data.tableName || node.data.label,
+                                            columns: node.data.columns
+                                        }));
+                                        setMenuOpen(false);
+                                    }} className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 text-blue-600 flex items-center gap-2 border-t border-gray-100">
+                                        <Plus className="w-3 h-3" /> New Instance
+                                    </button>
+                                    <button onClick={() => { dispatch(deleteTable(node.id)); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 border-t border-gray-100">
                                         <Trash2 className="w-3 h-3" /> Delete
                                     </button>
                                 </div>

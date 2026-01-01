@@ -1,0 +1,190 @@
+src/components/AddTableDialog.tsx(17,1): error TS6133: 'ScrollArea' is declared but its value is never read.
+src/components/designer/canvas/FlowCanvas.tsx(20,5): error TS2322: Type 'MemoExoticComponent<({ data, selected, id }: NodeProps<TableNodeData>) => Element>' is not assignable to type 'ComponentType<Pick<Node<Record<string, unknown>, string | undefined>, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<...> & { ...; } & { ...; }>'.
+  Type 'MemoExoticComponent<({ data, selected, id }: NodeProps<TableNodeData>) => Element>' is not assignable to type 'FunctionComponent<Pick<Node<Record<string, unknown>, string | undefined>, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<...> & { ...; } & { ...; }>'.
+    Types of parameters 'props' and 'props' are incompatible.
+      Type 'Pick<Node<Record<string, unknown>, string | undefined>, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<...> & { ...; } & { ...; }' is not assignable to type 'Pick<TableNodeData, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<Pick<TableNodeData, "type" | ... 5 more ... | "zIndex">> & { ...; }'.
+        Type 'Pick<Node<Record<string, unknown>, string | undefined>, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<...> & { ...; } & { ...; }' is not assignable to type 'Pick<TableNodeData, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId">'.
+          Property 'width' is optional in type 'Pick<Node<Record<string, unknown>, string | undefined>, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId"> & Required<...> & { ...; } & { ...; }' but required in type 'Pick<TableNodeData, "width" | "height" | "id" | "data" | "sourcePosition" | "targetPosition" | "dragHandle" | "parentId">'.
+src/components/designer/canvas/FlowCanvas.tsx(24,5): error TS2322: Type '({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, data, selected, source, target, sourceHandleId: sourceHandle, targetHandleId: targetHandle, }: EdgeProps<RelationshipEdgeData>) => Element' is not assignable to type 'ComponentType<Pick<Edge<Record<string, unknown>, string | undefined>, "id" | "type" | "data" | "source" | "target" | "selected" | "selectable" | "deletable" | "style" | "animated"> & EdgePosition & EdgeLabelOptions & { ...; } & { ...; }>'.
+  Type '({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd, data, selected, source, target, sourceHandleId: sourceHandle, targetHandleId: targetHandle, }: EdgeProps<RelationshipEdgeData>) => Element' is not assignable to type 'FunctionComponent<Pick<Edge<Record<string, unknown>, string | undefined>, "id" | "type" | "data" | "source" | "target" | "selected" | "selectable" | "deletable" | "style" | "animated"> & EdgePosition & EdgeLabelOptions & { ...; } & { ...; }>'.
+    Types of parameters '__0' and 'props' are incompatible.
+      Type 'Pick<Edge<Record<string, unknown>, string | undefined>, "id" | "type" | "data" | "source" | "target" | "selected" | "selectable" | "deletable" | "style" | "animated"> & EdgePosition & EdgeLabelOptions & { ...; } & { ...; }' is not assignable to type 'EdgeProps<RelationshipEdgeData>'.
+        Type 'Pick<Edge<Record<string, unknown>, string | undefined>, "id" | "type" | "data" | "source" | "target" | "selected" | "selectable" | "deletable" | "style" | "animated"> & EdgePosition & EdgeLabelOptions & { ...; } & { ...; }' is not assignable to type 'Pick<RelationshipEdgeData, "id" | "type" | "data" | "source" | "target" | "selected" | "selectable" | "deletable" | "style" | "animated">'.
+          Property 'selected' is optional in type 'Pick<Edge<Record<string, unknown>, string | undefined>, "id" | "type" | "data" | "source" | "target" | "selected" | "selectable" | "deletable" | "style" | "animated"> & EdgePosition & EdgeLabelOptions & { ...; } & { ...; }' but required in type 'Pick<RelationshipEdgeData, "id" | "type" | "data" | "source" | "target" | "selected" | "selectable" | "deletable" | "style" | "animated">'.
+src/components/designer/canvas/FlowCanvas.tsx(33,54): error TS2365: Operator '+' cannot be applied to types 'number' and '{}'.
+src/components/designer/canvas/FlowCanvas.tsx(90,17): error TS2322: Type '{ selected: boolean; id: string; position: XYPosition; data: TableNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 25 more ...; domAttributes?: Omit<...> | undefined; }[]' is not assignable to type 'Node[]'.
+  Type '{ selected: boolean; id: string; position: XYPosition; data: TableNodeData; sourcePosition?: Position; targetPosition?: Position; ... 25 more ...; domAttributes?: Omit<React.HTMLAttributes<HTMLDivElement>, "id" | "style" | "className" | "draggable" | "role" | "aria-label" | "defaultValue" | "dangerouslySetInnerHTML"...' is not assignable to type 'Node'.
+    Type '{ selected: boolean; id: string; position: XYPosition; data: TableNodeData; sourcePosition?: Position; targetPosition?: Position; ... 25 more ...; domAttributes?: Omit<React.HTMLAttributes<HTMLDivElement>, "id" | "style" | "className" | "draggable" | "role" | "aria-label" | "defaultValue" | "dangerouslySetInnerHTML"...' is not assignable to type '{ id: string; position: XYPosition; data: Record<string, unknown>; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+      Types of property 'data' are incompatible.
+        Type 'TableNodeData' is not assignable to type 'Record<string, unknown>'.
+          Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/designer/sidebar/Sidebar.tsx(3,1): error TS6133: 'Node' is declared but its value is never read.
+src/components/designer/sidebar/Sidebar.tsx(4,1): error TS6133: 'TableNodeData' is declared but its value is never read.
+src/components/designer/sidebar/SidebarField.tsx(2,71): error TS6133: 'Check' is declared but its value is never read.
+src/components/designer/sidebar/SidebarField.tsx(2,78): error TS6133: 'Plus' is declared but its value is never read.
+src/components/designer/sidebar/SidebarField.tsx(68,11): error TS6133: 'isObjectField' is declared but its value is never read.
+src/components/designer/sidebar/SidebarField.tsx(69,11): error TS6133: 'isVirtualField' is declared but its value is never read.
+src/components/designer/sidebar/SidebarHeader.tsx(1,21): error TS6133: 'useState' is declared but its value is never read.
+src/components/designer/sidebar/SidebarItem.tsx(3,72): error TS6133: 'Palette' is declared but its value is never read.
+src/components/designer/sidebar/SidebarItem.tsx(13,16): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/LinkFieldDialog.tsx(23,20): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/LinkFieldDialog.tsx(24,18): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/LinkFieldDialog.tsx(50,3): error TS6133: 'visibleNodeIds' is declared but its value is never read.
+src/components/RelationshipEdge.tsx(1,37): error TS6133: 'useCallback' is declared but its value is never read.
+src/components/RelationshipEdge.tsx(3,25): error TS6133: 'TableColumn' is declared but its value is never read.
+src/components/RelationshipEdge.tsx(16,26): error TS6133: 'useAppSelector' is declared but its value is never read.
+src/components/RelationshipEdge.tsx(47,14): error TS2344: Type 'RelationshipEdgeData' does not satisfy the constraint 'Edge<Record<string, unknown>, string | undefined>'.
+  Type 'RelationshipEdgeData' is missing the following properties from type 'EdgeBase<Record<string, unknown>, string | undefined>': id, source, target
+src/components/RelationshipEdge.tsx(49,48): error TS6133: 'getEdges' is declared but its value is never read.
+src/components/RelationshipEdge.tsx(54,11): error TS2339: Property 'relationshipType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(64,64): error TS2339: Property 'pathType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(66,52): error TS2339: Property 'relationshipType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(70,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/RelationshipEdge.tsx(70,48): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/RelationshipEdge.tsx(71,81): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/RelationshipEdge.tsx(94,34): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/RelationshipEdge.tsx(94,50): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/RelationshipEdge.tsx(107,34): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/RelationshipEdge.tsx(107,50): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/RelationshipEdge.tsx(115,23): error TS2339: Property 'sourceFK' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(118,53): error TS2339: Property 'sourceFK' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(131,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/RelationshipEdge.tsx(135,24): error TS18046: 'sourceNode.data.columns' is of type 'unknown'.
+src/components/RelationshipEdge.tsx(135,59): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/components/RelationshipEdge.tsx(140,9): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/components/RelationshipEdge.tsx(149,9): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/components/RelationshipEdge.tsx(150,9): error TS2322: Type '{}' is not assignable to type 'string'.
+src/components/RelationshipEdge.tsx(159,9): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/components/RelationshipEdge.tsx(160,9): error TS2322: Type '{}' is not assignable to type 'string'.
+src/components/RelationshipEdge.tsx(173,15): error TS2339: Property 'relationshipType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(174,32): error TS2339: Property 'relationshipType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(176,15): error TS2339: Property 'pathType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(177,24): error TS2339: Property 'pathType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(179,13): error TS2339: Property 'relationshipType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(179,37): error TS2339: Property 'pathType' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(219,32): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/RelationshipEdge.tsx(225,24): error TS18046: 'sourceNode.data.columns' is of type 'unknown'.
+src/components/RelationshipEdge.tsx(225,54): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/components/RelationshipEdge.tsx(233,24): error TS18046: 'targetNode.data.columns' is of type 'unknown'.
+src/components/RelationshipEdge.tsx(233,54): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/components/RelationshipEdge.tsx(240,16): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/RelationshipEdge.tsx(251,32): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/components/RelationshipEdge.tsx(394,9): error TS6133: 'showButton' is declared but its value is never read.
+src/components/RelationshipEdge.tsx(405,11): error TS2698: Spread types may only be created from object types.
+src/components/RelationshipEdge.tsx(420,9): error TS2322: Type 'unknown' is not assignable to type 'string | undefined'.
+src/components/RelationshipEdge.tsx(422,11): error TS2698: Spread types may only be created from object types.
+src/components/RelationshipEdge.tsx(477,14): error TS2339: Property 'primaryKeyField' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(488,25): error TS2339: Property 'primaryKeyField' does not exist on type '{}'.
+src/components/RelationshipEdge.tsx(505,28): error TS2322: Type '{ children: Element; asChild: true; }' is not assignable to type 'IntrinsicAttributes & ButtonHTMLAttributes<HTMLButtonElement> & RefAttributes<HTMLButtonElement>'.
+  Property 'asChild' does not exist on type 'IntrinsicAttributes & ButtonHTMLAttributes<HTMLButtonElement> & RefAttributes<HTMLButtonElement>'.
+src/components/RelationshipEdge.tsx(657,27): error TS2322: Type 'unknown' is not assignable to type 'string | number | readonly string[] | undefined'.
+src/components/RelationshipEdge.tsx(664,41): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(predicate: (value: Node, index: number, array: Node[]) => value is Node, thisArg?: any): Node[]', gave the following error.
+    Argument of type '(n: Node<TableNodeData>) => boolean' is not assignable to parameter of type '(value: Node, index: number, array: Node[]) => value is Node'.
+      Types of parameters 'n' and 'value' are incompatible.
+        Type 'Node' is not assignable to type 'Node<TableNodeData>'.
+          Type 'Node' is not assignable to type '{ id: string; position: XYPosition; data: TableNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+            Types of property 'data' are incompatible.
+              Type 'Record<string, unknown>' is missing the following properties from type 'TableNodeData': tableName, label, columns
+  Overload 2 of 2, '(predicate: (value: Node, index: number, array: Node[]) => unknown, thisArg?: any): Node[]', gave the following error.
+    Argument of type '(n: Node<TableNodeData>) => boolean' is not assignable to parameter of type '(value: Node, index: number, array: Node[]) => unknown'.
+      Types of parameters 'n' and 'value' are incompatible.
+        Type 'Node' is not assignable to type 'Node<TableNodeData>'.
+          Type 'Node' is not assignable to type '{ id: string; position: XYPosition; data: TableNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+            Types of property 'data' are incompatible.
+              Type 'Record<string, unknown>' is missing the following properties from type 'TableNodeData': tableName, label, columns
+src/components/RelationshipEdge.tsx(664,50): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/RelationshipEdge.tsx(665,61): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/RelationshipEdge.tsx(682,56): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/RelationshipEdge.tsx(682,72): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/RelationshipEdge.tsx(702,59): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(predicate: (value: Node, index: number, obj: Node[]) => value is Node, thisArg?: any): Node | undefined', gave the following error.
+    Argument of type '(n: Node<TableNodeData>) => boolean' is not assignable to parameter of type '(value: Node, index: number, obj: Node[]) => value is Node'.
+      Types of parameters 'n' and 'value' are incompatible.
+        Type 'Node' is not assignable to type 'Node<TableNodeData>'.
+          Type 'Node' is not assignable to type '{ id: string; position: XYPosition; data: TableNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+            Types of property 'data' are incompatible.
+              Type 'Record<string, unknown>' is missing the following properties from type 'TableNodeData': tableName, label, columns
+  Overload 2 of 2, '(predicate: (value: Node, index: number, obj: Node[]) => unknown, thisArg?: any): Node | undefined', gave the following error.
+    Argument of type '(n: Node<TableNodeData>) => boolean' is not assignable to parameter of type '(value: Node, index: number, obj: Node[]) => unknown'.
+      Types of parameters 'n' and 'value' are incompatible.
+        Type 'Node' is not assignable to type 'Node<TableNodeData>'.
+          Type 'Node' is not assignable to type '{ id: string; position: XYPosition; data: TableNodeData; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }'.
+            Types of property 'data' are incompatible.
+              Type 'Record<string, unknown>' is missing the following properties from type 'TableNodeData': tableName, label, columns
+src/components/RelationshipEdge.tsx(702,68): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/components/RelationshipEdge.tsx(703,36): error TS18046: 'targetNode.data.columns' is of type 'unknown'.
+src/components/RelationshipEdge.tsx(703,66): error TS7006: Parameter 'col' implicitly has an 'any' type.
+src/components/SchemaDialogs.tsx(8,5): error TS6133: 'openLinkFieldDialog' is declared but its value is never read.
+src/components/TableNode.tsx(12,63): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Node<Record<string, unknown>, string | undefined>'.
+  Type 'TableNodeData' is missing the following properties from type '{ id: string; position: XYPosition; data: Record<string, unknown>; sourcePosition?: Position | undefined; targetPosition?: Position | undefined; ... 19 more ...; measured?: { ...; } | undefined; }': id, position, data
+src/components/TableNode.tsx(15,44): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(16,23): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(19,34): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/TableNode.tsx(26,16): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(27,18): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(27,36): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(28,16): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(35,30): error TS2322: Type 'unknown' is not assignable to type 'string'.
+src/components/TableNode.tsx(67,18): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(71,25): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/components/TableNode.tsx(73,44): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(73,62): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(93,51): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/components/TableNode.tsx(103,10): error TS18046: 'data' is of type 'unknown'.
+src/components/TableNode.tsx(103,30): error TS7006: Parameter 'col' implicitly has an 'any' type.
+src/components/TableNode.tsx(103,65): error TS7006: Parameter 'column' implicitly has an 'any' type.
+src/components/TableNode.tsx(103,73): error TS6133: 'index' is declared but its value is never read.
+src/components/TableNode.tsx(103,73): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/data/initialSchema.ts(10,33): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/hooks/useSchema.ts(7,1): error TS6133: 'Node' is declared but its value is never read.
+src/hooks/useSchema.ts(8,10): error TS6133: 'TableNodeData' is declared but its value is never read.
+src/services/schemaService.ts(13,41): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/services/schemaService.ts(56,21): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/services/schemaService.ts(57,13): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/services/schemaService.ts(92,21): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/services/schemaService.ts(131,37): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/services/schemaService.ts(131,76): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/store/index.ts(8,9): error TS2322: Type 'Reducer<StateWithHistory<SchemaState>>' is not assignable to type 'Reducer<unknown, UnknownAction, unknown>'.
+  Types of parameters 'state' and 'state' are incompatible.
+    Type 'unknown' is not assignable to type 'StateWithHistory<SchemaState> | undefined'.
+src/store/slices/schemaSlice.ts(10,26): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(64,9): error TS2741: Property 'tableName' is missing in type '{ label: string; columns: ({ name: string; type: string; isPrimaryKey: true; visible: true; } | { name: string; type: string; visible: true; })[]; color: string; }' but required in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(78,9): error TS2741: Property 'tableName' is missing in type '{ label: string; columns: ({ name: string; type: string; isPrimaryKey: true; visible: true; } | { name: string; type: string; visible: true; })[]; color: string; }' but required in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(93,9): error TS2741: Property 'tableName' is missing in type '{ label: string; columns: ({ name: string; type: string; isPrimaryKey: true; visible: true; } | { name: string; type: string; visible: true; })[]; color: string; }' but required in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(108,9): error TS2741: Property 'tableName' is missing in type '{ label: string; columns: ({ name: string; type: string; isPrimaryKey: true; visible: true; } | { name: string; type: string; visible: true; })[]; color: string; }' but required in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(123,9): error TS2741: Property 'tableName' is missing in type '{ label: string; columns: ({ name: string; type: string; isPrimaryKey: true; visible: true; } | { name: string; type: string; visible: true; })[]; color: string; }' but required in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(136,17): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(170,54): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(177,13): error TS2322: Type 'NodeBase[]' is not assignable to type 'WritableNonArrayDraft<Node<TableNodeData>>[]'.
+  Type 'NodeBase' is not assignable to type 'WritableNonArrayDraft<Node<TableNodeData>>'.
+    Types of property 'data' are incompatible.
+      Type 'Record<string, unknown>' is missing the following properties from type 'WritableNonArrayDraft<TableNodeData>': tableName, label, columns
+src/store/slices/schemaSlice.ts(226,34): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/store/slices/schemaSlice.ts(350,76): error TS2322: Type '{}' is not assignable to type 'string'.
+src/utils/autoLayout.ts(8,47): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/utils/autoLayout.ts(8,71): error TS2344: Type 'TableNodeData' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TableNodeData'.
+src/utils/validation.ts(34,58): error TS2345: Argument of type 'string' is not assignable to parameter of type '"id" | "created_at" | "updated_at"'.

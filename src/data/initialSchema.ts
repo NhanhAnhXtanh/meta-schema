@@ -13,6 +13,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 0, y: 0 },
         data: {
+            tableName: 'products',
             label: 'Products',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -29,6 +30,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 400, y: -150 },
         data: {
+            tableName: 'warehouses',
             label: 'Warehouses',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -44,6 +46,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 400, y: 100 },
         data: {
+            tableName: 'suppliers',
             label: 'Suppliers',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -59,6 +62,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: -200 },
         data: {
+            tableName: 'categories',
             label: 'Categories',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -73,6 +77,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: -50 },
         data: {
+            tableName: 'orders',
             label: 'Orders',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -88,6 +93,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: 150 },
         data: {
+            tableName: 'customers',
             label: 'Customers',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -103,6 +109,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 400, y: 350 },
         data: {
+            tableName: 'reviews',
             label: 'Reviews',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -118,6 +125,7 @@ export const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: 350 },
         data: {
+            tableName: 'inventory',
             label: 'Inventory',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },

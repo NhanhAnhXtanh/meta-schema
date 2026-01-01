@@ -1,16 +1,20 @@
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { AddTableDialog } from './AddTableDialog';
 import { LinkFieldDialog } from './LinkFieldDialog';
+
 import {
     setAddTableDialogOpen,
     closeLinkFieldDialog,
-    openLinkFieldDialog
+    openLinkFieldDialog,
+    addVisibleNodeId
 } from '@/store/slices/uiSlice';
 import {
     confirmLinkField,
     confirmLinkObject,
-    deleteField
+    deleteField,
+    addTable
 } from '@/store/slices/schemaSlice';
+import { initialNodes } from '@/data/initialSchema';
 
 export function SchemaDialogs() {
     const dispatch = useAppDispatch();
@@ -28,8 +32,18 @@ export function SchemaDialogs() {
 
 
     // Handlers
-    const handleLinkFieldConfirm = (targetNodeId: string, sourceKey: string, targetKey: string, newFieldName: string, type: '1-n' | 'n-1' | '1-1') => {
+    const handleLinkFieldConfirm = (
+        targetNodeId: string,
+        sourceKey: string,
+        targetKey: string,
+        newFieldName: string,
+        type: '1-n' | 'n-1' | '1-1',
+        isNewInstance?: boolean,
+        templateId?: string
+    ) => {
         if (linkFieldDialogState.sourceNodeId) {
+            let finalTargetNodeId = targetNodeId;
+
             // 1. If Edit Mode, delete field first to cleanup old definition
             if (linkFieldDialogState.isEditMode && linkFieldDialogState.fieldIndex !== undefined) {
                 dispatch(deleteField({
@@ -39,11 +53,40 @@ export function SchemaDialogs() {
                 }));
             }
 
-            // 2. Add New (or Re-add)
+            // 2. If it's a new instance, create it first
+            if (isNewInstance && templateId) {
+                // Find template from baseline data
+                const template = initialNodes.find(n => n.id === templateId);
+                const sourceNode = nodes.find(n => n.id === linkFieldDialogState.sourceNodeId);
+
+                if (template) {
+                    const newId = `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                    // Simple logic to make label unique-ish if it already exists
+                    const existingCount = nodes.filter(n => n.data.tableName === template.data.tableName).length;
+                    const label = existingCount > 0 ? `${template.data.label} (${existingCount + 1})` : template.data.label;
+
+                    // Calculate position (to the right of source)
+                    const position = sourceNode
+                        ? { x: sourceNode.position.x + 400, y: sourceNode.position.y }
+                        : undefined;
+
+                    dispatch(addTable({
+                        id: newId,
+                        name: label,
+                        tableName: template.data.tableName,
+                        columns: template.data.columns,
+                        position
+                    }));
+                    dispatch(addVisibleNodeId(newId));
+                    finalTargetNodeId = newId;
+                }
+            }
+
+            // 3. Add Relationship
             if (type === '1-n') {
                 dispatch(confirmLinkField({
                     sourceNodeId: linkFieldDialogState.sourceNodeId,
-                    targetNodeId,
+                    targetNodeId: finalTargetNodeId,
                     sourcePK: sourceKey,
                     targetFK: targetKey,
                     newFieldName
@@ -52,7 +95,7 @@ export function SchemaDialogs() {
                 // n-1 or 1-1
                 dispatch(confirmLinkObject({
                     sourceNodeId: linkFieldDialogState.sourceNodeId,
-                    targetNodeId,
+                    targetNodeId: finalTargetNodeId,
                     sourceFK: sourceKey,
                     targetPK: targetKey,
                     newFieldName,

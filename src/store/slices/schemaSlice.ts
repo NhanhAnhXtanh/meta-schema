@@ -13,6 +13,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 0, y: 0 },
         data: {
+            tableName: 'products',
             label: 'Products',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -29,6 +30,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 400, y: -150 },
         data: {
+            tableName: 'warehouses',
             label: 'Warehouses',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -44,6 +46,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 400, y: 100 },
         data: {
+            tableName: 'suppliers',
             label: 'Suppliers',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -59,6 +62,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: -200 },
         data: {
+            tableName: 'categories',
             label: 'Categories',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -73,6 +77,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: -50 },
         data: {
+            tableName: 'orders',
             label: 'Orders',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -88,6 +93,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: 150 },
         data: {
+            tableName: 'customers',
             label: 'Customers',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -103,6 +109,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 400, y: 350 },
         data: {
+            tableName: 'reviews',
             label: 'Reviews',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -118,6 +125,7 @@ const initialNodes: Node<TableNodeData>[] = [
         type: 'table',
         position: { x: 800, y: 350 },
         data: {
+            tableName: 'inventory',
             label: 'Inventory',
             columns: [
                 { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
@@ -214,20 +222,21 @@ const schemaSlice = createSlice({
         },
 
         // Table operations
-        addTable: (state, action: PayloadAction<{ id?: string; name: string; columns: TableColumn[] }>) => {
-            const { id, name, columns } = action.payload;
-            // Use provided ID or fallback to auto-increment logic (legacy support)
-            const newId = id || String(state.nodes.length + 1);
+        addTable: (state, action: PayloadAction<{ id?: string; name: string; tableName?: string; columns: TableColumn[]; position?: { x: number; y: number } }>) => {
+            const { id, name, tableName, columns, position } = action.payload;
+            // Use provided ID or generate a unique one
+            const newId = id || `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
             const defaultColor = COLOR_OPTIONS[state.nodes.length % COLOR_OPTIONS.length];
 
             const newTable: Node<TableNodeData> = {
                 id: newId,
                 type: 'table',
-                position: {
+                position: position || {
                     x: Math.random() * 500 + 100,
                     y: Math.random() * 400 + 100,
                 },
                 data: {
+                    tableName: tableName || name.toLowerCase().replace(/\s+/g, '_'),
                     label: name,
                     columns: columns.map(c => ({ ...c, visible: true })),
                     color: defaultColor,

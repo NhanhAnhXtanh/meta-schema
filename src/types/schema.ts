@@ -12,10 +12,12 @@ export interface TableColumn {
 }
 
 export interface TableNodeData {
-    label: string;
+    tableName: string;  // Tên bảng DB thực tế (e.g. "công_dân")
+    label: string;       // Tên hiển thị/vai trò (e.g. "Chủ hộ")
     columns: TableColumn[];
     color?: string;
-    [key: string]: unknown;
+    _version?: number;   // Version for React Flow updates
+    [key: string]: any;  // Index signature to satisfy Record<string, unknown>
 }
 
 // Re-export specific types if needed elsewhere or keep generic types here

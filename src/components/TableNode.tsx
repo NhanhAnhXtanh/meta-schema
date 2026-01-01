@@ -1,50 +1,103 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
-import { Plus } from 'lucide-react';
-import { useAppDispatch } from '@/store/hooks';
-import { openLinkFieldDialog } from '@/store/slices/uiSlice';
+import { Plus, Copy, Trash2, Edit2 } from 'lucide-react';
+import { openLinkFieldDialog, addVisibleNodeId } from '@/store/slices/uiSlice';
+import { addTable, deleteTable, updateTable } from '@/store/slices/schemaSlice';
 import { THEME } from '@/constants/theme';
-
-
-export interface TableNodeData {
-  label: string;
-  columns: Array<{
-    name: string;
-    type: string;
-    isPrimaryKey?: boolean;
-    isForeignKey?: boolean;
-    isNotNull?: boolean;
-    visible?: boolean;
-    primaryKeyField?: string; // Field làm PK cho object type (thay vì compositeKeyFields)
-    isVirtual?: boolean; // Đánh dấu field virtual (field tự thêm, không phải field gốc)
-    linkedPrimaryKeyField?: string; // Field PK mà field virtual link tới
-    relationshipType?: '1-n' | 'n-1' | '1-1' | 'n-n'; // Loại quan hệ
-  }>;
-  color?: string;
-  _version?: number; // Timestamp for tracking node changes (used for React Flow handle updates)
-}
+import { Input } from './ui/input';
+import { useAppDispatch } from '@/store/hooks';
+import { TableNodeData } from '@/types/schema';
 
 function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
   const dispatch = useAppDispatch();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(data.label);
   const headerColor = data.color || THEME.NODE.HEADER_BG_DEFAULT;
 
   const handleAddField = () => {
     dispatch(openLinkFieldDialog(id));
   };
 
+  const handleClone = () => {
+    const newId = `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    dispatch(addTable({
+      id: newId,
+      name: `${data.label} (Bản sao)`,
+      tableName: data.tableName || data.label,
+      columns: data.columns
+    }));
+    dispatch(addVisibleNodeId(newId));
+  };
+
+  const handleSaveRename = () => {
+    if (editName.trim()) {
+      dispatch(updateTable({ id, updates: { label: editName.trim() } }));
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div
       className={cn(
-        'bg-white border-2 rounded-lg shadow-lg min-w-[200px]',
-        selected ? 'border-primary' : 'border-gray-300'
+        'bg-white border-2 rounded-lg shadow-xl min-w-[240px] group/node',
+        selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
       )}
     >
       <div
-        className="text-white px-4 py-2 font-bold rounded-t-lg"
+        className="text-white px-4 py-3 rounded-t-lg relative"
         style={{ backgroundColor: headerColor }}
       >
-        {data.label}
+        <div className="flex justify-between items-start">
+          <div className="flex-1 mr-8">
+            {isEditing ? (
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onBlur={handleSaveRename}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveRename()}
+                autoFocus
+                className="h-7 bg-white/20 border-white/30 text-white placeholder:text-white/50 text-sm font-bold focus:bg-white/30"
+              />
+            ) : (
+              <div
+                className="font-bold text-sm cursor-text hover:bg-white/10 rounded px-1 -ml-1"
+                onDoubleClick={() => setIsEditing(true)}
+              >
+                {data.label}
+              </div>
+            )}
+            <div className="text-[10px] opacity-80 flex items-center gap-1.5 mt-1">
+              <span>ID: {id}</span>
+              <span>•</span>
+              <span className="font-mono">{data.tableName || data.label}</span>
+            </div>
+          </div>
+
+          <div className="flex gap-1 absolute right-2 top-2 opacity-0 group-hover/node:opacity-100 transition-opacity">
+            <button
+              onClick={() => setIsEditing(true)}
+              className="p-1 hover:bg-white/20 rounded transition-colors"
+              title="Đổi tên"
+            >
+              <Edit2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleClone}
+              className="p-1 hover:bg-white/20 rounded transition-colors"
+              title="Nhân bản (Instance)"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => dispatch(deleteTable(id))}
+              className="p-1 hover:bg-red-500/50 rounded transition-colors"
+              title="Xóa"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
       </div>
       <div className="divide-y">
         {data.columns.filter(col => col.visible !== false).map((column, index) => (
