@@ -59,22 +59,56 @@ export function SchemaDialogs() {
                 const template = initialNodes.find(n => n.id === templateId);
                 const sourceNode = nodes.find(n => n.id === linkFieldDialogState.sourceNodeId);
 
-                if (template) {
+                if (template && sourceNode) {
                     const newId = `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
                     // Simple logic to make label unique-ish if it already exists
                     const existingCount = nodes.filter(n => n.data.tableName === template.data.tableName).length;
                     const label = existingCount > 0 ? `${template.data.label} (${existingCount + 1})` : template.data.label;
 
-                    // Calculate position (to the right of source)
-                    const position = sourceNode
-                        ? { x: sourceNode.position.x + 400, y: sourceNode.position.y }
-                        : undefined;
+                    // Smart Positioning Logic
+                    // We want to align the Source Field (Right Handle) with the Target Field (Left Handle)
+                    const ROW_HEIGHT = 37; // Exact tailwind py-2 (16px) + text-sm (20px) + border (1px)
+
+                    // Find index of source field (Visual Index)
+                    // The new field will be appended to the end of the list
+                    const sourceCols = sourceNode.data.columns.filter((c: any) => c.visible !== false);
+                    const sourceIndex = sourceCols.length; // New field is at the bottom
+
+                    // Find index of target field (Visual Index in new template)
+                    const targetCols = template.data.columns.filter((c: any) => c.visible !== false);
+                    const targetIndex = targetCols.findIndex((c: any) => c.name === targetKey);
+
+                    // Default position: To the right (x + 600) for better separation
+                    let position = { x: sourceNode.position.x + 600, y: sourceNode.position.y };
+
+                    if (targetIndex !== -1) {
+                        // Align handles vertically
+                        // Target NodeY = SourceNodeY + (S_Index - T_Index) * Row
+                        const yDiff = (sourceIndex - targetIndex) * ROW_HEIGHT;
+                        position.y = sourceNode.position.y + yDiff;
+                    }
+
+                    // Check for collision with existing nodes at roughly the same position
+                    // If overlap, push down. Simple heuristic.
+                    const isOccupied = (x: number, y: number) => {
+                        return nodes.some(n =>
+                            Math.abs(n.position.x - x) < 100 &&
+                            Math.abs(n.position.y - y) < 100
+                        );
+                    };
+
+                    // Retry a few times if occupied (though alignment is primary request, avoiding total overlap is good)
+                    let attempts = 0;
+                    while (isOccupied(position.x, position.y) && attempts < 5) {
+                        position.y += 100; // Push down
+                        attempts++;
+                    }
 
                     dispatch(addTable({
                         id: newId,
                         name: label,
                         tableName: template.data.tableName,
-                        columns: template.data.columns,
+                        columns: template.data.columns.map(c => ({ ...c, isVirtual: false })),
                         position
                     }));
                     dispatch(addVisibleNodeId(newId));

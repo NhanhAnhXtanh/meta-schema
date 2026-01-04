@@ -6,13 +6,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from './ui/dialog';
+} from '@/components/ui/dialog';
 import { ValidationUtils } from '@/utils/validation';
 import { RELATIONSHIP_TYPES } from '@/constants';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { initialNodes } from '@/data/initialSchema';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Database, Search, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TableNodeData } from '@/types/schema';
@@ -74,10 +74,24 @@ export function LinkFieldDialog({
   // Filter templates
   const filteredTemplates = useMemo(() => {
     return templates.filter(t =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.tableName.toLowerCase().includes(searchQuery.toLowerCase())
+      (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.tableName.toLowerCase().includes(searchQuery.toLowerCase())) &&
+      t.tableName !== sourceNode?.data.tableName // Filter out self
     );
-  }, [templates, searchQuery]);
+  }, [templates, searchQuery, sourceNode]);
+
+  // Filter existing nodes
+  const availableTargetNodes = useMemo(() => {
+    if (!sourceNode) return [];
+    return allNodes.filter(n => n.id !== sourceNode.id);
+  }, [allNodes, sourceNode]);
+
+  const filteredExistingNodes = useMemo(() => {
+    return availableTargetNodes.filter(n =>
+      n.data.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      n.data.tableName?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [availableTargetNodes, searchQuery]);
 
   // Populate form when editing
   useEffect(() => {
@@ -99,12 +113,6 @@ export function LinkFieldDialog({
     }
   }, [open, initialValues]);
 
-  // Target Node List - Only existing instances on board
-  const availableTargetNodes = useMemo(() => {
-    if (!sourceNode) return [];
-    return allNodes.filter(n => n.id !== sourceNode.id);
-  }, [allNodes, sourceNode]);
-
   // Source Fields
   const sourceFields = useMemo(() => {
     if (!sourceNode) return [];
@@ -125,6 +133,13 @@ export function LinkFieldDialog({
       return template.columns;
     }
   }, [selectedTargetNodeId, selectedTemplateId, availableTargetNodes, templates, targetType]);
+
+  const selectedTargetName = useMemo(() => {
+    if (targetType === 'existing') {
+      return availableTargetNodes.find(n => n.id === selectedTargetNodeId)?.data.label;
+    }
+    return templates.find(t => t.id === selectedTemplateId)?.name;
+  }, [targetType, selectedTargetNodeId, selectedTemplateId, availableTargetNodes, templates]);
 
   const handleConfirm = () => {
     const finalTargetId = targetType === 'existing' ? selectedTargetNodeId : selectedTemplateId;
@@ -183,219 +198,260 @@ export function LinkFieldDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-white text-gray-900 border-gray-200 shadow-xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-5xl bg-white text-gray-900 border-gray-200 shadow-xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="p-4 border-b border-gray-100 shrink-0">
           <DialogTitle>{isEditMode ? 'Chỉnh Sửa Trường Link' : 'Thêm Trường Link Mới'}</DialogTitle>
           <DialogDescription className="text-gray-500">
             {isEditMode ? 'Cập nhật' : 'Tạo'} liên kết giữa <strong>{sourceNode?.data.label}</strong> và bảng khác.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto pr-2 py-4 space-y-6">
-          {/* Target Type Selector */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Loại Bảng Đích</label>
-            <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-lg">
-              <button
-                onClick={() => setTargetType('existing')}
-                className={cn(
-                  "py-2 text-sm font-medium rounded-md transition-all",
-                  targetType === 'existing' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                Dùng bảng hiện có
-              </button>
-              <button
-                onClick={() => setTargetType('template')}
-                className={cn(
-                  "py-2 text-sm font-medium rounded-md transition-all",
-                  targetType === 'template' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                )}
-              >
-                Tạo bản sao từ Data
-              </button>
+        <div className="flex flex-1 min-h-0">
+          {/* Left Sidebar: Selection */}
+          <div className="w-[320px] border-r border-gray-200 flex flex-col bg-gray-50/50">
+            {/* Type Toggle */}
+            <div className="p-3 border-b border-gray-100 bg-white">
+              <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => { setTargetType('existing'); setSearchQuery(''); }}
+                  className={cn(
+                    "py-1.5 text-xs font-semibold rounded-md transition-all",
+                    targetType === 'existing' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  )}
+                >
+                  Bảng hiện có
+                </button>
+                <button
+                  onClick={() => { setTargetType('template'); setSearchQuery(''); }}
+                  className={cn(
+                    "py-1.5 text-xs font-semibold rounded-md transition-all",
+                    targetType === 'template' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                  )}
+                >
+                  Bản sao từ Data
+                </button>
+              </div>
             </div>
+
+            {/* Search */}
+            <div className="p-3 pb-0">
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                <Input
+                  placeholder={targetType === 'existing' ? "Tìm bảng..." : "Tìm mẫu..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 h-9 text-sm bg-white border-gray-200"
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <ScrollArea className="flex-1 p-3">
+              <div className="space-y-1">
+                {targetType === 'existing' ? (
+                  filteredExistingNodes.length > 0 ? (
+                    filteredExistingNodes.map(node => (
+                      <button
+                        key={node.id}
+                        onClick={() => setSelectedTargetNodeId(node.id)}
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 rounded-lg transition-all border group",
+                          selectedTargetNodeId === node.id
+                            ? "bg-blue-50 border-blue-200 shadow-sm"
+                            : "border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={cn("w-2 h-8 rounded-full shrink-0", selectedTargetNodeId === node.id ? "bg-blue-500" : "bg-gray-300")} style={{ backgroundColor: node.data.color }} />
+                          <div className="min-w-0">
+                            <div className={cn("text-sm font-semibold truncate", selectedTargetNodeId === node.id ? "text-blue-900" : "text-gray-700")}>{node.data.label}</div>
+                            <div className="text-[10px] text-gray-400 font-mono truncate">ID: {node.id}</div>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  ) : <div className="text-center py-8 text-xs text-gray-400">Không tìm thấy bảng</div>
+                ) : (
+                  filteredTemplates.length > 0 ? (
+                    filteredTemplates.map(template => (
+                      <button
+                        key={template.id}
+                        onClick={() => {
+                          setSelectedTemplateId(template.id);
+                          if (!newFieldName) setNewFieldName(template.name.toLowerCase());
+                        }}
+                        className={cn(
+                          "w-full text-left px-3 py-2.5 rounded-lg transition-all border group",
+                          selectedTemplateId === template.id
+                            ? "bg-blue-50 border-blue-200 shadow-sm"
+                            : "border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm"
+                        )}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Database className={cn("w-4 h-4 shrink-0", selectedTemplateId === template.id ? "text-blue-600" : "text-gray-400")} />
+                          <div className="min-w-0">
+                            <div className={cn("text-sm font-semibold truncate", selectedTemplateId === template.id ? "text-blue-900" : "text-gray-700")}>{template.name}</div>
+                            <div className="text-[10px] text-gray-400 truncate">{template.tableName}</div>
+                          </div>
+                        </div>
+                      </button>
+                    ))
+                  ) : <div className="text-center py-8 text-xs text-gray-400">Không tìm thấy mẫu data</div>
+                )}
+              </div>
+            </ScrollArea>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-4">
-              {/* Target Selection */}
-              {targetType === 'existing' ? (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Chọn Bảng Trên Canvas</label>
-                  <select
-                    value={selectedTargetNodeId}
-                    onChange={(e) => setSelectedTargetNodeId(e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">-- Chọn bảng --</option>
-                    {availableTargetNodes.map((node) => (
-                      <option key={node.id} value={node.id}>
-                        {node.data.label} (ID: {node.id})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="space-y-2 flex flex-col h-[300px]">
-                  <label className="text-sm font-medium text-gray-700">Chọn Bản Sao Từ Data</label>
-                  <div className="relative mb-2">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                    <Input
-                      placeholder="Tìm kiếm data..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-8 h-9 text-sm"
-                    />
+          {/* Right Panel: Content */}
+          <div className="flex-1 flex flex-col bg-white min-w-0">
+            {selectedTargetName ? (
+              <>
+                {/* Header */}
+                <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-10">
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide">Selected</span>
+                    <h3 className="font-bold text-gray-900 text-lg">{selectedTargetName}</h3>
                   </div>
-                  <ScrollArea className="flex-1 border rounded-md bg-gray-50">
-                    <div className="p-2 space-y-1">
-                      {filteredTemplates.map(template => (
-                        <button
-                          key={template.id}
-                          onClick={() => {
-                            setSelectedTemplateId(template.id);
-                            // Auto-set field name if empty
-                            if (!newFieldName) setNewFieldName(template.name.toLowerCase());
-                          }}
-                          className={cn(
-                            "w-full text-left px-3 py-2 rounded-md transition-all group",
-                            selectedTemplateId === template.id
-                              ? "bg-blue-600 text-white shadow-md scale-[1.02]"
-                              : "hover:bg-white text-gray-700"
-                          )}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Database className={cn("w-4 h-4", selectedTemplateId === template.id ? "text-blue-200" : "text-gray-400")} />
-                              <div>
-                                <div className="text-sm font-bold">{template.name}</div>
-                                <div className={cn("text-[10px]", selectedTemplateId === template.id ? "text-blue-100" : "text-gray-500")}>
-                                  type: {template.tableName}
-                                </div>
-                              </div>
-                            </div>
-                            {selectedTemplateId === template.id && <ArrowRight className="w-4 h-4 text-blue-200 animate-pulse" />}
-                          </div>
-                        </button>
-                      ))}
+                  <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-violet-600" />
+                      <span>Primary Key</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Field Preview */}
+                <div className="flex-1 min-h-0 bg-gray-50 relative group">
+                  <ScrollArea className="h-full">
+                    <div className="p-6">
+                      <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50/50 border-b border-gray-100">
+                              <th className="py-3 px-4 text-[10px] font-extrabold text-slate-700 uppercase tracking-widest w-12 text-center font-sans">PK</th>
+                              <th className="py-3 px-4 text-[10px] font-extrabold text-slate-700 uppercase tracking-widest font-sans">Field Name</th>
+                              <th className="py-3 px-4 text-[10px] font-extrabold text-slate-700 uppercase tracking-widest w-32 text-right font-sans">Type</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-50">
+                            {targetFields.map((col, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-2 px-4 text-center">
+                                  {col.isPrimaryKey && <div className="w-2 h-2 bg-violet-600 rounded-full mx-auto ring-2 ring-violet-100 shadow-sm" />}
+                                </td>
+                                <td className={cn("py-2.5 px-4 text-sm font-bold font-mono", col.isPrimaryKey ? "text-violet-800" : "text-slate-800")}>
+                                  {col.name}
+                                </td>
+                                <td className="py-2.5 px-4 text-xs font-semibold font-mono text-slate-600 text-right">
+                                  {col.type}
+                                </td>
+                              </tr>
+                            ))}
+                            {targetFields.length === 0 && (
+                              <tr>
+                                <td colSpan={3} className="py-8 text-center text-gray-400 text-sm">No columns found</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </ScrollArea>
                 </div>
-              )}
 
-              {/* Relationship Type */}
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Kiểu Dữ Liệu</label>
-                  <select
-                    value={linkType === RELATIONSHIP_TYPES.ONE_TO_MANY ? 'array' : 'object'}
-                    onChange={(e) => {
-                      const type = e.target.value as 'array' | 'object';
-                      if (type === 'array') setLinkType(RELATIONSHIP_TYPES.ONE_TO_MANY);
-                      else setLinkType(RELATIONSHIP_TYPES.MANY_TO_ONE);
-                    }}
-                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="array">Array (Danh sách)</option>
-                    <option value="object">Object (Đối tượng)</option>
-                  </select>
-                </div>
+                {/* Configuration Form */}
+                <div className="p-6 border-t border-gray-100 bg-white shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-20">
+                  <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-4">Cấu hình liên kết</h4>
+                  <div className="grid grid-cols-12 gap-6">
+                    {/* Keys */}
+                    <div className="col-span-8 grid grid-cols-[1fr,auto,1fr] gap-4 items-center">
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-gray-500 uppercase flex justify-between">
+                          <span>Source Key (PK)</span>
+                          <span className="text-blue-600">{sourceNode?.data.label}</span>
+                        </label>
+                        <select
+                          value={selectedSourceKey}
+                          onChange={(e) => setSelectedSourceKey(e.target.value)}
+                          className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm"
+                        >
+                          <option value="">-- Chọn khóa --</option>
+                          {sourceFields.map((field) => (
+                            <option key={field.name} value={field.name}>
+                              {field.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">Loại Liên Kết</label>
-                  <select
-                    value={linkType}
-                    onChange={(e) => setLinkType(e.target.value as any)}
-                    className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus-visible:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value={RELATIONSHIP_TYPES.ONE_TO_MANY}>1 - Nhiều (One to Many)</option>
-                    <option value={RELATIONSHIP_TYPES.MANY_TO_ONE}>Nhiều - 1 (Many to One)</option>
-                    <option value={RELATIONSHIP_TYPES.ONE_TO_ONE}>1 - 1 (One to One)</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+                      <div className="pt-5 text-gray-300">
+                        <ArrowRight className="w-5 h-5" />
+                      </div>
 
-            <div className="space-y-4 pt-1">
-              {/* Keys Selection */}
-              <div className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex justify-between">
-                    <span>Khóa Nguồn ({sourceNode?.data.label})</span>
-                    <span className="text-[10px] text-gray-500 font-normal uppercase">Thường là {isArray ? 'PK' : 'FK'}</span>
-                  </label>
-                  <select
-                    value={selectedSourceKey}
-                    onChange={(e) => setSelectedSourceKey(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm text-gray-900 focus-visible:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-                  >
-                    <option value="">-- Chọn khóa --</option>
-                    {sourceFields.map((field) => (
-                      <option key={field.name} value={field.name}>
-                        {field.name} {field.isPrimaryKey ? '(PK)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-semibold text-gray-500 uppercase flex justify-between">
+                          <span>Target Key (FK)</span>
+                          <span className="text-blue-600 truncate max-w-[100px]">{selectedTargetName}</span>
+                        </label>
+                        <select
+                          value={selectedTargetKey}
+                          onChange={(e) => setSelectedTargetKey(e.target.value)}
+                          className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm"
+                        >
+                          <option value="">-- Chọn khóa --</option>
+                          {targetFields.map((field) => (
+                            <option key={field.name} value={field.name}>
+                              {field.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
 
-                <div className="flex justify-center py-1">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shadow-sm border border-blue-200">
-                    <ArrowRight className="w-4 h-4" />
+                    {/* Field Name */}
+                    <div className="col-span-4 space-y-1.5">
+                      <label className="text-[10px] font-semibold text-gray-500 uppercase block">Field Name in Source</label>
+                      <Input
+                        value={newFieldName}
+                        onChange={(e) => setNewFieldName(e.target.value)}
+                        placeholder="e.g. suppliers"
+                        className="h-9 bg-white border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 flex justify-between">
-                    <span>Khóa Đích {targetType === 'template' ? '(Bản sao mới)' : ''}</span>
-                    <span className="text-[10px] text-gray-500 font-normal uppercase">Thường là {isArray ? 'FK' : 'PK'}</span>
-                  </label>
-                  <select
-                    value={selectedTargetKey}
-                    onChange={(e) => setSelectedTargetKey(e.target.value)}
-                    disabled={targetType === 'existing' ? !selectedTargetNodeId : !selectedTemplateId}
-                    className="flex h-9 w-full rounded-md border border-gray-300 bg-white px-3 py-1 text-sm text-gray-900 focus-visible:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm disabled:opacity-50"
-                  >
-                    <option value="">-- Chọn khóa --</option>
-                    {targetFields.map((field) => (
-                      <option key={field.name} value={field.name}>
-                        {field.name} {field.isPrimaryKey ? '(PK)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  {validationError && (
+                    <div className="mt-3 text-red-600 text-[11px] font-medium flex items-center gap-2 animate-in slide-in-from-left-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      {validationError}
+                    </div>
+                  )}
                 </div>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3">
+                <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center">
+                  <Database className="w-8 h-8 opacity-20" />
+                </div>
+                <p className="text-sm font-medium">Chọn một bảng từ danh sách bên trái</p>
               </div>
-
-              {/* Tên field mới */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Tên Field Mới Trong {sourceNode?.data.label}</label>
-                <Input
-                  value={newFieldName}
-                  onChange={(e) => setNewFieldName(e.target.value)}
-                  placeholder={isArray ? "Ví dụ: ds_don_hang" : "Ví dụ: danh_muc"}
-                  className="bg-white border-gray-300 text-gray-900 h-10 shadow-sm focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              {validationError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-[11px] font-medium flex items-start gap-2 animate-in fade-in slide-in-from-top-1">
-                  <svg className="shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
-                  {validationError}
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Buttons */}
-        <div className="flex gap-2 justify-end pt-4 mt-2 border-t border-gray-100 shrink-0">
-          <Button variant="ghost" onClick={handleCancel} className="text-gray-500 hover:text-gray-900 px-6">
-            Hủy
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 shrink-0">
+          <Button variant="ghost" onClick={handleCancel} className="text-gray-500 hover:text-gray-900 border border-transparent hover:bg-white hover:border-gray-200 transition-all font-medium">
+            Hủy bỏ
           </Button>
           <Button
             onClick={handleConfirm}
             disabled={!isFormValid}
-            className="bg-blue-600 hover:bg-blue-700 text-white min-w-[120px] shadow-lg shadow-blue-200 transition-all font-bold"
+            className={cn(
+              "min-w-[140px] shadow-lg shadow-blue-500/20 transition-all font-bold",
+              isFormValid ? "bg-blue-600 hover:bg-blue-700 hover:shadow-blue-500/30 text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            )}
           >
             {targetType === 'template' ? 'Tạo Bản Sao & Link' : 'Tạo Liên Kết'}
           </Button>
@@ -404,4 +460,3 @@ export function LinkFieldDialog({
     </Dialog>
   );
 }
-

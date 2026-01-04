@@ -1,7 +1,5 @@
 import { useState, useMemo, useRef } from 'react';
 import { useAppSelector, useAppDispatch } from '@/store/hooks';
-import { Node } from '@xyflow/react';
-import { TableNodeData } from '@/types/schema';
 import { setNodes } from '@/store/slices/schemaSlice';
 
 import { SidebarHeader } from './SidebarHeader';

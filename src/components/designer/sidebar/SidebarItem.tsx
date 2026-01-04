@@ -152,7 +152,7 @@ const SidebarItemBase = ({
                                         dispatch(addTable({
                                             name: `${node.data.label} (Instance)`,
                                             tableName: node.data.tableName || node.data.label,
-                                            columns: node.data.columns
+                                            columns: node.data.columns.map(c => ({ ...c }))
                                         }));
                                         setMenuOpen(false);
                                     }} className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 text-blue-600 flex items-center gap-2 border-t border-gray-100">

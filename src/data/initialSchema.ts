@@ -22,7 +22,7 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'price', type: 'money', visible: true },
                 { name: 'quantity', type: 'int4', visible: true },
             ],
-            color: TABLE_COLORS[0],
+            color: TABLE_COLORS[5],
         },
     },
     {
@@ -38,7 +38,7 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'address', type: 'varchar', visible: true },
                 { name: 'capacity', type: 'int4', visible: true },
             ],
-            color: TABLE_COLORS[1],
+            color: TABLE_COLORS[4],
         },
     },
     {
@@ -54,7 +54,7 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'contact', type: 'varchar', visible: true },
                 { name: 'country', type: 'varchar', visible: true },
             ],
-            color: TABLE_COLORS[2],
+            color: TABLE_COLORS[3],
         },
     },
     {
@@ -69,7 +69,7 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'name', type: 'varchar', visible: true },
                 { name: 'description', type: 'text', visible: true },
             ],
-            color: TABLE_COLORS[3],
+            color: TABLE_COLORS[2],
         },
     },
     {
@@ -85,7 +85,7 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'total_amount', type: 'money', visible: true },
                 { name: 'status', type: 'varchar', visible: true },
             ],
-            color: TABLE_COLORS[4],
+            color: TABLE_COLORS[1],
         },
     },
     {
@@ -101,7 +101,7 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'email', type: 'varchar', visible: true },
                 { name: 'phone', type: 'varchar', visible: true },
             ],
-            color: TABLE_COLORS[5],
+            color: TABLE_COLORS[0],
         },
     },
     {
@@ -117,7 +117,7 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'comment', type: 'text', visible: true },
                 { name: 'created_at', type: 'timestamp', visible: true },
             ],
-            color: TABLE_COLORS[0],
+            color: TABLE_COLORS[5],
         },
     },
     {
@@ -132,7 +132,23 @@ export const initialNodes: Node<TableNodeData>[] = [
                 { name: 'stock_quantity', type: 'int', visible: true },
                 { name: 'last_updated', type: 'timestamp', visible: true },
             ],
-            color: TABLE_COLORS[1],
+            color: TABLE_COLORS[4],
+        },
+    },
+    {
+        id: '9',
+        type: 'table',
+        position: { x: 0, y: 500 },
+        data: {
+            tableName: 'large_test_table',
+            label: 'Large Test Table (40 fields)',
+            columns: Array.from({ length: 40 }, (_, i) => ({
+                name: `field_${i + 1}_${['data', 'info', 'meta'][i % 3]}`,
+                type: ['varchar', 'int', 'boolean', 'timestamp', 'jsonb'][i % 5],
+                visible: true,
+                isPrimaryKey: i === 0,
+            })),
+            color: TABLE_COLORS[2],
         },
     },
 ];
