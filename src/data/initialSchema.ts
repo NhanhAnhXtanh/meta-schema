@@ -9,6 +9,26 @@ import { TABLE_COLORS } from '@/constants';
 
 export const initialNodes: Node<TableNodeData>[] = [
     {
+        id: 'sample-api-user',
+        type: 'table',
+        position: { x: -400, y: 0 },
+        data: {
+            tableName: 'users_sample',
+            label: 'Users (API Sample)',
+            columns: [
+                { name: 'id', type: 'int', isPrimaryKey: true, visible: true },
+                { name: 'name', type: 'varchar', visible: true },
+                { name: 'username', type: 'varchar', visible: true },
+                { name: 'email', type: 'varchar', visible: true },
+                { name: 'address', type: 'object', visible: true },
+                { name: 'phone', type: 'varchar', visible: true },
+                { name: 'website', type: 'varchar', visible: true },
+                { name: 'company', type: 'object', visible: true }
+            ],
+            color: TABLE_COLORS[2],
+        },
+    },
+    {
         id: '1',
         type: 'table',
         position: { x: 0, y: 0 },

@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableNodeData } from '@/types/schema';
 import { useAppDispatch } from '@/store/hooks';
-import { updateTable, deleteTable, reorderFields, addTable } from '@/store/slices/schemaSlice';
+import { updateTable, reorderFields, addTable } from '@/store/slices/schemaSlice';
+import { deleteTableCascade } from '@/store/thunks/schemaThunks';
 import { setSelectedNodeId, openLinkFieldDialog } from '@/store/slices/uiSlice';
 import { SidebarField } from './SidebarField';
 
@@ -222,7 +223,7 @@ const SidebarItemBase = ({
                         </button>
                         <button
                             onClick={() => {
-                                dispatch(deleteTable(node.id));
+                                dispatch(deleteTableCascade(node.id));
                                 setShowDeleteDialog(false);
                             }}
                             className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

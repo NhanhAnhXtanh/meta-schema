@@ -23,8 +23,11 @@ interface AddTableDialogProps {
 export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
     const dispatch = useAppDispatch();
     const existingNodes = useAppSelector(state => state.schema.present.nodes);
-    const [mode, setMode] = useState<'manual' | 'template'>('template');
+    const [mode, setMode] = useState<'manual' | 'template' | 'api'>('template');
     const [searchQuery, setSearchQuery] = useState('');
+    // API Mode
+    const [apiUrl, setApiUrl] = useState('https://jsonplaceholder.typicode.com/users/1');
+    const [isFetching, setIsFetching] = useState(false);
 
     // Manual Mode State
     const [tableName, setTableName] = useState(''); // DB table name

@@ -11,6 +11,7 @@ import {
 import {
     confirmLinkField,
     confirmLinkObject,
+    updateLinkConnection,
     deleteField,
     addTable
 } from '@/store/slices/schemaSlice';
@@ -117,24 +118,39 @@ export function SchemaDialogs() {
             }
 
             // 3. Add Relationship
-            if (type === '1-n') {
-                dispatch(confirmLinkField({
-                    sourceNodeId: linkFieldDialogState.sourceNodeId,
+            // 2. Handle Edit Mode or Create Mode
+            if (linkFieldDialogState.isEditMode) {
+                dispatch(updateLinkConnection({
+                    sourceNodeId: linkFieldDialogState.sourceNodeId!,
+                    oldFieldName: linkFieldDialogState.initialValues?.fieldName || '',
+                    newFieldName,
                     targetNodeId: finalTargetNodeId,
-                    sourcePK: sourceKey,
-                    targetFK: targetKey,
-                    newFieldName
+                    sourceKey: sourceKey,
+                    targetKey: targetKey,
+                    relationshipType: type
                 }));
             } else {
-                // n-1 or 1-1
-                dispatch(confirmLinkObject({
-                    sourceNodeId: linkFieldDialogState.sourceNodeId,
-                    targetNodeId: finalTargetNodeId,
-                    sourceFK: sourceKey,
-                    targetPK: targetKey,
-                    newFieldName,
-                    relationshipType: type as 'n-1' | '1-1'
-                }));
+                // Create Mode
+                if (type === '1-n') {
+                    dispatch(confirmLinkField({
+                        sourceNodeId: linkFieldDialogState.sourceNodeId!,
+                        targetNodeId: finalTargetNodeId,
+                        sourcePK: sourceKey,
+                        targetFK: targetKey,
+                        newFieldName,
+                        relationshipType: type
+                    }));
+                } else {
+                    // n-1 or 1-1
+                    dispatch(confirmLinkObject({
+                        sourceNodeId: linkFieldDialogState.sourceNodeId!,
+                        targetNodeId: finalTargetNodeId,
+                        sourceFK: sourceKey,
+                        targetPK: targetKey,
+                        newFieldName,
+                        relationshipType: type as 'n-1' | '1-1'
+                    }));
+                }
             }
             dispatch(closeLinkFieldDialog());
         }

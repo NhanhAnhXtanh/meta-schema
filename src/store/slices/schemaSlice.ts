@@ -1,13 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Node, Edge, Connection, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from '@xyflow/react';
 import { TableNodeData, TableColumn } from '@/types/schema';
-
-// Initial state data (moved from App.tsx)
-// Initial state data (moved from App.tsx)
-const COLOR_OPTIONS = [
-    '#22c55e', '#a855f7', '#eab308', '#3b82f6', '#ef4444', '#14b8a6',
-];
-
+import { TABLE_COLORS } from '@/constants';
 
 interface SchemaState {
     nodes: Node<TableNodeData>[];
@@ -49,6 +43,9 @@ const schemaSlice = createSlice({
         },
         setEdges: (state, action: PayloadAction<Edge[]>) => {
             state.edges = action.payload;
+        },
+        addEdge: (state, action: PayloadAction<Edge>) => {
+            state.edges.push(action.payload);
         },
         onNodesChange: (state, action: PayloadAction<NodeChange[]>) => {
             state.nodes = applyNodeChanges(action.payload, state.nodes);
@@ -102,7 +99,7 @@ const schemaSlice = createSlice({
             const { id, name, tableName, columns, position } = action.payload;
             // Use provided ID or generate a unique one
             const newId = id || `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-            const defaultColor = COLOR_OPTIONS[state.nodes.length % COLOR_OPTIONS.length];
+            const defaultColor = TABLE_COLORS[state.nodes.length % TABLE_COLORS.length];
 
             const newTable: Node<TableNodeData> = {
                 id: newId,
@@ -127,6 +124,14 @@ const schemaSlice = createSlice({
             if (node) {
                 node.data = { ...node.data, ...updates };
             }
+        },
+        deleteElements: (state, action: PayloadAction<{ nodeIds: string[], edgeIds: string[] }>) => {
+            const { nodeIds, edgeIds } = action.payload;
+            const nodeSet = new Set(nodeIds);
+            const edgeSet = new Set(edgeIds);
+
+            state.nodes = state.nodes.filter(n => !nodeSet.has(n.id));
+            state.edges = state.edges.filter(e => !edgeSet.has(e.id));
         },
         deleteTable: (state, action: PayloadAction<string>) => {
             const rootId = action.payload;
@@ -365,7 +370,7 @@ const schemaSlice = createSlice({
                 type: 'varchar',
                 visible: true,
                 isVirtual: true,
-                isPrimaryKey: true,
+                isPrimaryKey: false, // Fix: Virtual field is not PK
                 linkedPrimaryKeyField: sourcePK,
             };
             sourceNode.data.columns.push(newField);
@@ -397,6 +402,93 @@ const schemaSlice = createSlice({
             if (targetIndex !== -1) {
                 state.nodes[targetIndex] = { ...state.nodes[targetIndex] };
             }
+        },
+
+        updateLinkConnection: (state, action: PayloadAction<{
+            sourceNodeId: string;
+            oldFieldName: string;
+            newFieldName: string;
+            targetNodeId: string;
+            sourceKey: string;     // PK or FK in source
+            targetKey: string;     // PK or FK in target
+            relationshipType: '1-n' | 'n-1' | '1-1';
+        }>) => {
+            const { sourceNodeId, oldFieldName, newFieldName, targetNodeId, sourceKey, targetKey, relationshipType } = action.payload;
+            const sourceNode = state.nodes.find(n => n.id === sourceNodeId);
+            if (!sourceNode) return;
+
+            // 1. Find and Update the Field in Source
+            const fieldIndex = sourceNode.data.columns.findIndex(c => c.name === oldFieldName);
+            if (fieldIndex !== -1) {
+                // Update Name and Type logic
+                const field = sourceNode.data.columns[fieldIndex];
+                field.name = newFieldName;
+
+                if (relationshipType === '1-n') {
+                    // Array (Virtual)
+                    field.isVirtual = true;
+                    field.type = 'varchar'; // or 'array'
+                    field.linkedPrimaryKeyField = sourceKey;
+                    delete field.primaryKeyField; // Clean up N:1 props
+                } else {
+                    // Object (N:1)
+                    field.isVirtual = false;
+                    field.type = 'object';
+                    field.primaryKeyField = targetKey;
+                    field.relationshipType = relationshipType;
+                    delete field.linkedPrimaryKeyField; // Clean up 1:N props
+                }
+            }
+
+            // 2. Remove Old Edge
+            state.edges = state.edges.filter(e =>
+                !(e.source === sourceNodeId && e.sourceHandle === oldFieldName)
+            );
+
+            // 3. Create New Edge
+            // For 1:N (Virtual): Source(Field) -> Target(FK)
+            // For N:1 (Object): Source(FK) -> Target(PK). Wait, if N:1, the field IS the foreign key? 
+            // In my 'confirmLinkObject', I added a field 'type: object' (newFieldName). 
+            // And I marked 'sourceFK' as foreign key.
+            // Wait, if I change from 'object' to 'array', logic changes significantly.
+
+            // Simplified Edge Creation based on previous pattern:
+            const edgeId = `edge-${Date.now()}`;
+            // Correct handles depend on type
+            let sourceHandle = newFieldName;
+            let targetHandle = targetKey;
+
+            if (relationshipType === 'n-1' || relationshipType === '1-1') {
+                // For Object type, we typically link [FK Column] -> [Target PK]
+                // But here 'newFieldName' is the Object Field (virtual-ish wrapper?).
+                // In confirmLinkObject, edge was Source -> Target.
+                // Let's stick to Source(Field) -> Target(Key) for visual consistency?
+                // Note: In `confirmLinkObject`, handles were `sourceFK` -> `targetPK`. 
+                // `newFieldName` was just a helper field. 
+                // If I am editing `newFieldName` (the object field), I should probably ensure the Edge is linked to the underline FK?
+                // This is getting complex.
+                // Let's assume for now we link the Virtual/Object field to the Target Key for visual.
+                sourceHandle = newFieldName;
+                targetHandle = targetKey;
+            } else {
+                // 1-N (Array)
+                // Source(Virtual Field) -> Target(FK)
+                sourceHandle = newFieldName;
+                targetHandle = targetKey;
+            }
+
+            state.edges.push({
+                id: edgeId,
+                source: sourceNodeId,
+                target: targetNodeId,
+                sourceHandle: sourceHandle,
+                targetHandle: targetHandle,
+                type: 'relationship',
+                data: { relationshipType }
+            });
+
+            // Force update
+            state.nodes = [...state.nodes];
         },
 
         confirmLinkObject: (state, action: PayloadAction<{
@@ -432,9 +524,6 @@ const schemaSlice = createSlice({
                 // 3. Add Edge: Source -> Target
                 // Source Handle: sourceFK (The column holding the ID)
                 // Target Handle: targetPK (The ID column in Target)
-                // Wait, ReactFlow edges usually go handle-to-handle.
-                // For N-1 (Object):
-                // We usually draw from FK (Source) to PK (Target).
                 const edgeId = `e-${sourceNodeId}-${sourceFK}-${targetNodeId}-${targetPK}`;
                 const exists = state.edges.some(e => e.id === edgeId);
 
@@ -443,27 +532,15 @@ const schemaSlice = createSlice({
                         id: edgeId,
                         source: sourceNodeId,
                         target: targetNodeId,
-                        sourceHandle: newFieldName, // Use the virtual field name as the source handle
+                        sourceHandle: sourceFK,
                         targetHandle: targetPK,
                         type: 'relationship',
-                        data: {
-                            relationshipType: relationshipType || 'n-1',
-                            primaryKeyField: targetPK,
-                            objectFieldName: newFieldName,
-                            sourceFK: sourceFK // Store the physical FK column name
-                        }
+                        data: { relationshipType: relationshipType || 'n-1' }
                     });
                 }
 
-                // Force nodes update to trigger React Flow handle recompute
-                const sourceIndex = state.nodes.findIndex(n => n.id === sourceNodeId);
-                if (sourceIndex !== -1) {
-                    state.nodes[sourceIndex] = { ...state.nodes[sourceIndex] };
-                }
-                const targetIndex = state.nodes.findIndex(n => n.id === targetNodeId);
-                if (targetIndex !== -1) {
-                    state.nodes[targetIndex] = { ...state.nodes[targetIndex] };
-                }
+                // Force update
+                state.nodes = [...state.nodes];
             }
         },
 
@@ -525,9 +602,10 @@ const schemaSlice = createSlice({
 });
 
 export const {
-    setNodes, setEdges, onNodesChange, onEdgesChange, onConnect, updateEdge,
-    addTable, updateTable, deleteTable,
+    setNodes, setEdges, addEdge, onNodesChange, onEdgesChange, onConnect, updateEdge,
+    addTable, updateTable, deleteTable, deleteElements,
     addField, updateField, deleteField, reorderFields, toggleFieldVisibility,
+    resetSchema,
     confirmLinkField, confirmLinkObject, confirmObjectConnection
 } = schemaSlice.actions;
 

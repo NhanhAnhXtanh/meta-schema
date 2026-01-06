@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableColumn } from '@/types/schema';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { updateField, deleteField, toggleFieldVisibility } from '@/store/slices/schemaSlice';
+import { updateField, toggleFieldVisibility } from '@/store/slices/schemaSlice';
+import { deleteFieldCascade } from '@/store/thunks/schemaThunks';
 import { addVisibleNodeId, removeVisibleNodeId, openEditLinkFieldDialog } from '@/store/slices/uiSlice';
 import { NestedFieldsList } from './NestedFieldsList';
 
@@ -376,7 +377,7 @@ const SidebarFieldBase = ({
                         </button>
                         <button
                             onClick={() => {
-                                dispatch(deleteField({ nodeId, fieldIndex: index }));
+                                dispatch(deleteFieldCascade(nodeId, index));
                                 setShowDeleteDialog(false);
                             }}
                             className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
