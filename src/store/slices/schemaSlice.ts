@@ -606,7 +606,7 @@ export const {
     addTable, updateTable, deleteTable, deleteElements,
     addField, updateField, deleteField, reorderFields, toggleFieldVisibility,
     resetSchema,
-    confirmLinkField, confirmLinkObject, confirmObjectConnection
+    confirmLinkField, confirmLinkObject, updateLinkConnection, confirmObjectConnection
 } = schemaSlice.actions;
 
 export default schemaSlice.reducer;

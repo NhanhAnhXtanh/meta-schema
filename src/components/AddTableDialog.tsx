@@ -14,6 +14,7 @@ import { addTable } from '@/store/slices/schemaSlice';
 import { addVisibleNodeId } from '@/store/slices/uiSlice';
 import { initialNodes } from '@/data/initialSchema';
 import { cn } from '@/lib/utils';
+import { TableColumn } from '@/types/schema';
 
 interface AddTableDialogProps {
     open: boolean;
@@ -32,7 +33,8 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
     // Manual Mode State
     const [tableName, setTableName] = useState(''); // DB table name
     const [displayLabel, setDisplayLabel] = useState(''); // Display label/role
-    const [columns, setColumns] = useState<Array<{ name: string; type: string; isPrimaryKey?: boolean; isForeignKey?: boolean; visible?: boolean }>>([
+
+    const [columns, setColumns] = useState<TableColumn[]>([
         { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
     ]);
 
@@ -133,7 +135,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                 </DialogHeader>
 
                 {/* Mode Switcher */}
-                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-lg shrink-0">
+                <div className="grid grid-cols-3 gap-2 p-1 bg-gray-100 rounded-lg shrink-0">
                     <button
                         onClick={() => setMode('template')}
                         className={cn(
@@ -152,10 +154,20 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                     >
                         <LayoutGrid className="w-4 h-4" /> Tạo Thủ Công (Empty)
                     </button>
+                    <button
+                        onClick={() => setMode('api')}
+                        className={cn(
+                            "py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all",
+                            mode === 'api' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                        )}
+                    >
+                        <LayoutGrid className="w-4 h-4" /> Import API
+                    </button>
                 </div>
 
                 <div className="flex-1 overflow-hidden mt-4 min-h-0 flex flex-col">
-                    {mode === 'template' ? (
+                    {/* TEMPLATE MODE */}
+                    {mode === 'template' && (
                         <div className="flex-1 flex gap-4 min-h-0">
                             {/* Template List */}
                             <div className="w-1/3 border-r border-gray-200 pr-4 flex flex-col min-h-0">
@@ -204,47 +216,35 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                 </div>
                             </div>
 
-                            {/* Preview */}
-                            <div className="flex-1 overflow-y-auto bg-gray-50 rounded-md border border-gray-200 p-4">
-                                {selectedTemplate ? (
-                                    <div>
-                                        <div className="flex items-center gap-3 mb-6 p-4 bg-white rounded-lg border border-gray-100 shadow-sm">
-                                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
-                                                <Database className="w-5 h-5" />
-                                            </div>
+                            {/* Template Preview */}
+                            <div className="flex-1 min-h-0 flex flex-col bg-gray-50/50 rounded-lg border border-gray-100 overflow-hidden">
+                                {selectedTemplateName ? (
+                                    <div className="flex flex-col h-full">
+                                        <div className="p-3 border-b border-gray-200 bg-white flex justify-between items-center shrink-0">
                                             <div>
-                                                <h4 className="font-bold text-gray-900 text-lg">{selectedTemplate.name}</h4>
-                                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                                    <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">{selectedTemplate.tableName}</span>
-                                                    <span>•</span>
-                                                    <span>{selectedTemplate.columns.length} columns</span>
-                                                </div>
+                                                <h4 className="font-bold text-gray-900">{selectedTemplateName}</h4>
+                                                <div className="text-xs text-gray-500 font-mono mt-0.5">{templates.find(t => t.name === selectedTemplateName)?.tableName}</div>
+                                            </div>
+                                            <div className="text-[10px] font-mono bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">
+                                                {templates.find(t => t.name === selectedTemplateName)?.columns.length} columns
                                             </div>
                                         </div>
-
-                                        <div className="rounded-md border border-gray-200 overflow-hidden bg-white">
-                                            <table className="w-full text-left text-sm">
-                                                <thead className="bg-gray-50">
-                                                    <tr className="border-b border-gray-200">
-                                                        <th className="py-2.5 px-3 text-xs font-semibold text-gray-500 w-10 text-center">PK</th>
-                                                        <th className="py-2.5 px-3 text-xs font-semibold text-gray-500">Field Name</th>
-                                                        <th className="py-2.5 px-3 text-xs font-semibold text-gray-500 w-24">Type</th>
-                                                        <th className="py-2.5 px-3 text-xs font-semibold text-gray-500 w-20 text-right">Attributes</th>
+                                        <div className="flex-1 overflow-auto p-0">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                                    <tr>
+                                                        <th className="px-4 py-2 font-semibold">Column</th>
+                                                        <th className="px-4 py-2 font-semibold w-24">Type</th>
+                                                        <th className="px-4 py-2 font-semibold w-16 text-center">PK</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-gray-100">
-                                                    {selectedTemplate.columns.map((col, idx) => (
+                                                <tbody className="divide-y divide-gray-100 bg-white">
+                                                    {templates.find(t => t.name === selectedTemplateName)?.columns.map((col, idx) => (
                                                         <tr key={idx} className="hover:bg-gray-50">
-                                                            <td className="py-2 px-3 text-center">
+                                                            <td className="px-4 py-2 font-mono text-gray-700">{col.name}</td>
+                                                            <td className="px-4 py-2 text-gray-500 font-mono text-xs">{col.type}</td>
+                                                            <td className="px-4 py-2 text-center text-xs">
                                                                 {col.isPrimaryKey && <div className="w-1.5 h-1.5 bg-yellow-500 rounded-full mx-auto" />}
-                                                            </td>
-                                                            <td className="py-2 px-3 font-medium text-gray-700">{col.name}</td>
-                                                            <td className="py-2 px-3 text-gray-500 text-xs font-mono">{col.type}</td>
-                                                            <td className="py-2 px-3 text-right">
-                                                                <div className="flex gap-1 justify-end">
-                                                                    {col.isForeignKey && <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-[10px] rounded font-medium">FK</span>}
-                                                                    {col.isNotNull && <span className="px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] rounded font-medium">NN</span>}
-                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ))}
@@ -260,7 +260,86 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                 )}
                             </div>
                         </div>
-                    ) : (
+                    )}
+
+                    {/* API MODE */}
+                    {mode === 'api' && (
+                        <div className="space-y-4 py-2">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">API URL</label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        value={apiUrl}
+                                        onChange={(e) => setApiUrl(e.target.value)}
+                                        placeholder="https://api.example.com/data"
+                                        className="font-mono text-xs"
+                                    />
+                                    <Button
+                                        onClick={async () => {
+                                            setIsFetching(true);
+                                            try {
+                                                const res = await fetch(apiUrl);
+                                                const data = await res.json();
+
+                                                // Function to parse object recursively
+                                                const parseToColumns = (obj: any): any[] => {
+                                                    if (!obj || typeof obj !== 'object') return [];
+
+                                                    return Object.keys(obj).map(key => {
+                                                        const val = obj[key];
+                                                        let type = 'varchar';
+                                                        let children = undefined;
+
+                                                        if (Array.isArray(val)) {
+                                                            type = 'array';
+                                                        } else if (val === null) {
+                                                            type = 'varchar';
+                                                        } else if (typeof val === 'number') {
+                                                            type = Number.isInteger(val) ? 'int' : 'float';
+                                                        } else if (typeof val === 'boolean') {
+                                                            type = 'boolean';
+                                                        } else if (typeof val === 'object') {
+                                                            type = 'object';
+                                                            children = parseToColumns(val);
+                                                        }
+
+                                                        return {
+                                                            name: key,
+                                                            type,
+                                                            visible: true,
+                                                            isPrimaryKey: key === 'id',
+                                                            children
+                                                        };
+                                                    });
+                                                };
+
+                                                const newCols = parseToColumns(data);
+
+                                                setColumns(newCols);
+                                                setTableName('imported_api_table');
+                                                setDisplayLabel('API Data Table');
+                                                setMode('manual'); // Switch to manual to review
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert('Failed to fetch/parse API: ' + e);
+                                            } finally {
+                                                setIsFetching(false);
+                                            }
+                                        }}
+                                        disabled={isFetching}
+                                    >
+                                        {isFetching ? 'Fetching...' : 'Fetch & Parse'}
+                                    </Button>
+                                </div>
+                                <div className="text-[10px] text-gray-400">
+                                    Supports JSON response. Will extract keys as columns and detect nested objects.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MANUAL MODE */}
+                    {mode === 'manual' && (
                         <div className="space-y-4 flex-1 overflow-y-auto pr-2">
                             {/* Manual Form Content */}
                             <div>
