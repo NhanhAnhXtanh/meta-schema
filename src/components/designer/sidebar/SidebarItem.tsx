@@ -9,6 +9,14 @@ import { updateTable, deleteTable, reorderFields, addTable } from '@/store/slice
 import { setSelectedNodeId, openLinkFieldDialog } from '@/store/slices/uiSlice';
 import { SidebarField } from './SidebarField';
 
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
+
 interface SidebarItemProps {
     node: Node<TableNodeData>;
     depth?: number;
@@ -30,6 +38,7 @@ const SidebarItemBase = ({
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(node.data.label);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     // Field DnD state
     const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
@@ -147,18 +156,7 @@ const SidebarItemBase = ({
                                     <button onClick={() => { setIsEditing(true); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-700">
                                         <Edit2 className="w-3 h-3" /> Rename
                                     </button>
-                                    {/* Add Color Picker here if needed */}
-                                    <button onClick={() => {
-                                        dispatch(addTable({
-                                            name: `${node.data.label} (Instance)`,
-                                            tableName: node.data.tableName || node.data.label,
-                                            columns: node.data.columns.map(c => ({ ...c }))
-                                        }));
-                                        setMenuOpen(false);
-                                    }} className="w-full px-4 py-2 text-left text-sm hover:bg-blue-50 text-blue-600 flex items-center gap-2 border-t border-gray-100">
-                                        <Plus className="w-3 h-3" /> New Instance
-                                    </button>
-                                    <button onClick={() => { dispatch(deleteTable(node.id)); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 border-t border-gray-100">
+                                    <button onClick={() => { setMenuOpen(false); setShowDeleteDialog(true); }} className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 border-t border-gray-100">
                                         <Trash2 className="w-3 h-3" /> Delete
                                     </button>
                                 </div>
@@ -198,6 +196,42 @@ const SidebarItemBase = ({
                     </button>
                 </div>
             )}
+
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="w-5 h-5" />
+                            Xóa bảng {node.data.label}?
+                        </DialogTitle>
+                        <DialogDescription className="py-2">
+                            <span className="block font-medium text-gray-900 mb-2">
+                                CẢNH BÁO CAO ĐỘ:
+                            </span>
+                            Hành động này sẽ xóa bảng <strong>{node.data.label}</strong> VÀ <strong className="text-red-600">TẤT CẢ các bảng con (descendants)</strong> đang được liên kết với nó.
+                            <br /><br />
+                            Bạn có chắc chắn muốn tiếp tục không? Hành động này không thể hoàn tác.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-3 mt-4">
+                        <button
+                            onClick={() => setShowDeleteDialog(false)}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                            Hủy bỏ
+                        </button>
+                        <button
+                            onClick={() => {
+                                dispatch(deleteTable(node.id));
+                                setShowDeleteDialog(false);
+                            }}
+                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                            Xác nhận Xóa
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

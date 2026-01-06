@@ -8,6 +8,14 @@ import { updateField, deleteField, toggleFieldVisibility } from '@/store/slices/
 import { addVisibleNodeId, removeVisibleNodeId, openEditLinkFieldDialog } from '@/store/slices/uiSlice';
 import { NestedFieldsList } from './NestedFieldsList';
 
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
+
 interface SidebarFieldProps {
     nodeId: string;
     field: TableColumn;
@@ -33,6 +41,7 @@ const SidebarFieldBase = ({
 
     const [localName, setLocalName] = useState(field.name || '');
     const [isEditing, setIsEditing] = useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     // Sync local name when field name changes from external sources, but not while editing
     useEffect(() => {
@@ -321,7 +330,7 @@ const SidebarFieldBase = ({
                         {/* DELETE BUTTON: ONLY FOR VIRTUAL FIELDS */}
                         {field.isVirtual && (
                             <button
-                                onClick={() => dispatch(deleteField({ nodeId, fieldIndex: index }))}
+                                onClick={() => setShowDeleteDialog(true)}
                                 className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                                 title="Delete Field"
                             >
@@ -341,6 +350,42 @@ const SidebarFieldBase = ({
                     isReadOnly={isReadOnly}
                 />
             )}
+
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-red-600">
+                            <Trash2 className="w-5 h-5" />
+                            Xóa trường {field.name}?
+                        </DialogTitle>
+                        <DialogDescription className="py-2">
+                            <span className="block font-medium text-gray-900 mb-2">
+                                CẢNH BÁO CAO ĐỘ:
+                            </span>
+                            Hành động này sẽ xóa trường <strong>{field.name}</strong> VÀ <strong className="text-red-600">TẤT CẢ các bảng con (descendants)</strong> được sinh ra từ trường này.
+                            <br /><br />
+                            Bạn có chắc chắn muốn tiếp tục không? Hành động này không thể hoàn tác.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-3 mt-4">
+                        <button
+                            onClick={() => setShowDeleteDialog(false)}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        >
+                            Hủy bỏ
+                        </button>
+                        <button
+                            onClick={() => {
+                                dispatch(deleteField({ nodeId, fieldIndex: index }));
+                                setShowDeleteDialog(false);
+                            }}
+                            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                            Xác nhận Xóa
+                        </button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

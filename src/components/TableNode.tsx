@@ -3,16 +3,24 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Plus, Copy, Trash2, Edit2 } from 'lucide-react';
 import { openLinkFieldDialog, addVisibleNodeId } from '@/store/slices/uiSlice';
-import { addTable, deleteTable, updateTable } from '@/store/slices/schemaSlice';
+import { addTable, deleteTable, updateTable, resetSchema } from '@/store/slices/schemaSlice';
 import { THEME } from '@/constants/theme';
 import { Input } from './ui/input';
 import { useAppDispatch } from '@/store/hooks';
 import { TableNodeData } from '@/types/schema';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from './ui/dialog';
 
 function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
   const dispatch = useAppDispatch();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(data.label);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const headerColor = data.color || THEME.NODE.HEADER_BG_DEFAULT;
 
   const handleAddField = () => {
@@ -38,182 +46,220 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
   };
 
   return (
-    <div
-      className={cn(
-        'bg-white border-2 rounded-lg shadow-xl min-w-[240px] group/node',
-        selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
-      )}
-    >
+    <>
       <div
-        className="text-white px-4 py-3 rounded-t-lg relative"
-        style={{ backgroundColor: headerColor }}
+        className={cn(
+          'bg-white border-2 rounded-lg shadow-xl min-w-[240px] group/node',
+          selected ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'
+        )}
       >
-        <div className="flex justify-between items-start">
-          <div className="flex-1 mr-8">
-            {isEditing ? (
-              <Input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                onBlur={handleSaveRename}
-                onKeyDown={(e) => e.key === 'Enter' && handleSaveRename()}
-                autoFocus
-                className="h-7 bg-white/20 border-white/30 text-white placeholder:text-white/50 text-sm font-bold focus:bg-white/30"
-              />
-            ) : (
-              <div
-                className="font-bold text-sm cursor-text hover:bg-white/10 rounded px-1 -ml-1"
-                onDoubleClick={() => setIsEditing(true)}
-              >
-                {data.label}
+        <div
+          className="text-white px-4 py-3 rounded-t-lg relative"
+          style={{ backgroundColor: headerColor }}
+        >
+          <div className="flex justify-between items-start">
+            <div className="flex-1 mr-8">
+              {isEditing ? (
+                <Input
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onBlur={handleSaveRename}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSaveRename()}
+                  autoFocus
+                  className="h-7 bg-white/20 border-white/30 text-white placeholder:text-white/50 text-sm font-bold focus:bg-white/30"
+                />
+              ) : (
+                <div
+                  className="font-bold text-sm cursor-text hover:bg-white/10 rounded px-1 -ml-1"
+                  onDoubleClick={() => setIsEditing(true)}
+                >
+                  {data.label}
+                </div>
+              )}
+              <div className="text-[10px] opacity-80 flex items-center gap-1.5 mt-1">
+                <span>ID: {id}</span>
+                <span>•</span>
+                <span className="font-mono">{data.tableName || data.label}</span>
               </div>
-            )}
-            <div className="text-[10px] opacity-80 flex items-center gap-1.5 mt-1">
-              <span>ID: {id}</span>
-              <span>•</span>
-              <span className="font-mono">{data.tableName || data.label}</span>
+            </div>
+
+            <div className="flex gap-1 absolute right-2 top-2 opacity-0 group-hover/node:opacity-100 transition-opacity">
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1 hover:bg-white/20 rounded transition-colors"
+                title="Đổi tên"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={handleClone}
+                className="p-1 hover:bg-white/20 rounded transition-colors"
+                title="Nhân bản (Instance)"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setShowDeleteDialog(true)}
+                className="p-1 hover:bg-red-500/50 rounded transition-colors"
+                title="Xóa"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
-
-          <div className="flex gap-1 absolute right-2 top-2 opacity-0 group-hover/node:opacity-100 transition-opacity">
-            <button
-              onClick={() => setIsEditing(true)}
-              className="p-1 hover:bg-white/20 rounded transition-colors"
-              title="Đổi tên"
-            >
-              <Edit2 className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={handleClone}
-              className="p-1 hover:bg-white/20 rounded transition-colors"
-              title="Nhân bản (Instance)"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => dispatch(deleteTable(id))}
-              className="p-1 hover:bg-red-500/50 rounded transition-colors"
-              title="Xóa"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
         </div>
-      </div>
-      <div className="divide-y">
-        {data.columns.filter(col => col.visible !== false).map((column, index) => (
-          <div
-            key={column.name}
-            className={cn(
-              'px-4 py-2 text-sm flex items-center gap-2 relative',
-              column.isPrimaryKey && 'bg-yellow-50',
-              column.isForeignKey && 'bg-blue-50',
-              column.isVirtual && 'bg-green-50 border-l-2 border-l-green-400'
-            )}
-          >
-            {/* Target Handle - Bên trái */}
-            <Handle
-              type="target"
-              position={Position.Left}
-              id={column.name}
-              className="react-flow-handle-target !w-4 !h-4 !bg-gray-400 !border-2 !border-white !-left-2 !transition-colors !duration-200 hover:!bg-green-500 !z-10"
-              style={{
-                top: '50%',
-                transform: 'translateY(-50%)',
-                pointerEvents: 'all'
-              }}
-            />
-
-            {/* Field name */}
-            <span className="font-medium text-gray-900 pointer-events-none">{column.name || ''}</span>
-
-            {/* Field type hoặc linked PK */}
-            {column.isVirtual && column.linkedPrimaryKeyField ? (
-              <span className="text-gray-500 text-xs flex items-center gap-1 pointer-events-none">
-                <span className="text-green-600">→</span>
-                <span className="text-green-600 font-medium">{column.linkedPrimaryKeyField}</span>
-              </span>
-            ) : column.type === 'object' && column.primaryKeyField ? (
-              <span className="text-gray-500 text-xs flex items-center gap-1 pointer-events-none">
-                <span className="text-purple-600">→</span>
-                <span className="text-purple-600">{column.primaryKeyField}</span>
-              </span>
-            ) : (
-              <span className="text-gray-500 text-xs pointer-events-none">{column.type}</span>
-            )}
-
-            {/* Badges */}
-            <div className="flex gap-1 items-center ml-auto pointer-events-none">
-              {column.isVirtual && (
-                <span className="text-xs bg-green-200 text-green-800 px-1.5 py-0.5 rounded font-semibold">
-                  V
-                </span>
+        <div className="divide-y nodrag">
+          {data.columns.filter(col => col.visible !== false).map((column, index) => (
+            <div
+              key={column.name}
+              className={cn(
+                'px-4 py-2 text-sm flex items-center gap-2 relative',
+                column.isPrimaryKey && 'bg-yellow-50',
+                column.isForeignKey && 'bg-blue-50',
+                column.isVirtual && 'bg-green-50 border-l-2 border-l-green-400'
               )}
-              {column.isPrimaryKey && (
-                <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
-                  PK
+            >
+              {/* Target Handle - Invisible Anchor */}
+              <Handle
+                type="target"
+                position={Position.Left}
+                id={column.name}
+                isConnectable={false}
+                className="!w-0 !h-0 !min-w-0 !min-h-0 !opacity-0 !border-0 !bg-transparent pointer-events-none"
+                style={{
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
+              />
+
+              {/* Field name */}
+              <span className="font-medium text-gray-900 pointer-events-none">{column.name || ''}</span>
+
+              {/* Field type hoặc linked PK */}
+              {column.isVirtual && column.linkedPrimaryKeyField ? (
+                <span className="text-gray-500 text-xs flex items-center gap-1 pointer-events-none">
+                  <span className="text-green-600">→</span>
+                  <span className="text-green-600 font-medium">{column.linkedPrimaryKeyField}</span>
                 </span>
-              )}
-              {column.isForeignKey && (
-                <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-semibold">
-                  FK
+              ) : column.type === 'object' && column.primaryKeyField ? (
+                <span className="text-gray-500 text-xs flex items-center gap-1 pointer-events-none">
+                  <span className="text-purple-600">→</span>
+                  <span className="text-purple-600">{column.primaryKeyField}</span>
                 </span>
+              ) : (
+                <span className="text-gray-500 text-xs pointer-events-none">{column.type}</span>
               )}
-              {column.type === 'object' && (
-                <>
-                  <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded font-semibold">
-                    O
+
+              {/* Badges */}
+              <div className="flex gap-1 items-center ml-auto pointer-events-none">
+                {column.isVirtual && (
+                  <span className="text-xs bg-green-200 text-green-800 px-1.5 py-0.5 rounded font-semibold">
+                    V
                   </span>
-                  {column.primaryKeyField && (
-                    <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
-                      PK
+                )}
+                {column.isPrimaryKey && (
+                  <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
+                    PK
+                  </span>
+                )}
+                {column.isForeignKey && (
+                  <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-semibold">
+                    FK
+                  </span>
+                )}
+                {column.type === 'object' && (
+                  <>
+                    <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded font-semibold">
+                      O
                     </span>
-                  )}
-                </>
-              )}
+                    {column.primaryKeyField && (
+                      <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
+                        PK
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Source Handle - Invisible Anchor */}
+              <Handle
+                type="source"
+                position={Position.Right}
+                id={column.name}
+                isConnectable={false}
+                className="!w-0 !h-0 !min-w-0 !min-h-0 !opacity-0 !border-0 !bg-transparent pointer-events-none"
+                style={{
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                }}
+              />
             </div>
+          ))}
 
-            {/* Source Handle - Bên phải */}
-            <Handle
-              type="source"
-              position={Position.Right}
-              id={column.name}
-              className="react-flow-handle-source !w-4 !h-4 !bg-gray-400 !border-2 !border-white !-right-2 !transition-colors !duration-200 hover:!bg-green-500 !z-10"
-              style={{
-                top: '50%',
-                transform: 'translateY(-50%)',
-                pointerEvents: 'all'
-              }}
-            />
+          {/* Button thêm field */}
+          <div className="px-4 py-2 border-t border-gray-200">
+            <button
+              onClick={handleAddField}
+              className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
+              title="Thêm field mới"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm field</span>
+            </button>
           </div>
-        ))}
-
-        {/* Button thêm field */}
-        <div className="px-4 py-2 border-t border-gray-200">
-          <button
-            onClick={handleAddField}
-            className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded transition-colors"
-            title="Thêm field mới"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Thêm field</span>
-          </button>
+        </div>
+        {/* Object Target Handle - Invisible Anchor */}
+        <div className="relative border-t border-gray-200 py-0 h-0">
+          <Handle
+            type="target"
+            position={Position.Bottom}
+            id="object-target"
+            isConnectable={false}
+            className="!w-0 !h-0 !min-w-0 !min-h-0 !opacity-0 !border-0 !bg-transparent pointer-events-none"
+            style={{
+              left: '50%',
+              transform: 'translateX(-50%)',
+            }}
+          />
         </div>
       </div>
-      {/* Object Target Handle - Handle đặc biệt ở đáy để nhận field từ bảng khác */}
-      <div className="relative border-t border-gray-200 py-2">
-        <Handle
-          type="target"
-          position={Position.Bottom}
-          id="object-target"
-          className="react-flow-handle-object-target !w-6 !h-6 !bg-purple-500 !border-2 !border-white !-bottom-3 !transition-colors !duration-200 hover:!bg-purple-600 !z-10 !rounded-full"
-          style={{
-            left: '50%',
-            transform: 'translateX(-50%)',
-            pointerEvents: 'all'
-          }}
-        />
-      </div>
-    </div>
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Xóa bảng {data.label}?
+            </DialogTitle>
+            <DialogDescription className="py-2">
+              <span className="block font-medium text-gray-900 mb-2">
+                CẢNH BÁO CAO ĐỘ:
+              </span>
+              Hành động này sẽ xóa bảng <strong>{data.label}</strong> VÀ <strong className="text-red-600">TẤT CẢ các bảng con (descendants)</strong> đang được liên kết với nó.
+              <br /><br />
+              Bạn có chắc chắn muốn tiếp tục không? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <button
+              onClick={() => setShowDeleteDialog(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Hủy bỏ
+            </button>
+            <button
+              onClick={() => {
+                dispatch(deleteTable(id));
+                setShowDeleteDialog(false);
+              }}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Xác nhận Xóa
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

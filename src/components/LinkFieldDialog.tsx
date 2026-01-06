@@ -80,16 +80,15 @@ export function LinkFieldDialog({
   // Filter templates
   const filteredTemplates = useMemo(() => {
     return templates.filter(t =>
-      (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.tableName.toLowerCase().includes(searchQuery.toLowerCase())) &&
-      t.tableName !== sourceNode?.data.tableName // Filter out self
+    (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.tableName.toLowerCase().includes(searchQuery.toLowerCase()))
     );
-  }, [templates, searchQuery, sourceNode]);
+  }, [templates, searchQuery]);
 
   // Filter existing nodes
   const availableTargetNodes = useMemo(() => {
     if (!sourceNode) return [];
-    return allNodes.filter(n => n.id !== sourceNode.id);
+    return allNodes;
   }, [allNodes, sourceNode]);
 
   const filteredExistingNodes = useMemo(() => {

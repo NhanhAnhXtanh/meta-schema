@@ -56,6 +56,10 @@ const schemaSlice = createSlice({
         onEdgesChange: (state, action: PayloadAction<EdgeChange[]>) => {
             state.edges = applyEdgeChanges(action.payload, state.edges);
         },
+        resetSchema: (state) => {
+            state.nodes = [];
+            state.edges = [];
+        },
         onConnect: (state, action: PayloadAction<Connection>) => {
             const { source, target, sourceHandle, targetHandle } = action.payload;
 
@@ -125,9 +129,31 @@ const schemaSlice = createSlice({
             }
         },
         deleteTable: (state, action: PayloadAction<string>) => {
-            const id = action.payload;
-            state.nodes = state.nodes.filter(n => n.id !== id);
-            state.edges = state.edges.filter(e => e.source !== id && e.target !== id);
+            const rootId = action.payload;
+            const idsToDelete = new Set<string>();
+            const queue = [rootId];
+
+            // 1. BFS to find all descendants
+            while (queue.length > 0) {
+                const currentId = queue.shift()!;
+                if (!idsToDelete.has(currentId)) {
+                    idsToDelete.add(currentId);
+
+                    // Find all OUTGOING edges from this node (Source -> Target)
+                    // This implies "Children" or "Dependents"
+                    const outgoingEdges = state.edges.filter(e => e.source === currentId);
+
+                    outgoingEdges.forEach(edge => {
+                        queue.push(edge.target);
+                    });
+                }
+            }
+
+            // 2. Remove all identified nodes
+            state.nodes = state.nodes.filter(n => !idsToDelete.has(n.id));
+
+            // 3. Remove all edges connected to deleted nodes (either source or target)
+            state.edges = state.edges.filter(e => !idsToDelete.has(e.source) && !idsToDelete.has(e.target));
         },
 
         // Column operations
