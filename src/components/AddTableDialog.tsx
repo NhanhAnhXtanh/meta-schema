@@ -14,7 +14,6 @@ import { addTable } from '@/store/slices/schemaSlice';
 import { addVisibleNodeId } from '@/store/slices/uiSlice';
 import { initialNodes } from '@/data/initialSchema';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AddTableDialogProps {
     open: boolean;
@@ -126,7 +125,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                 <DialogHeader>
                     <DialogTitle>Thêm Bảng Mới</DialogTitle>
                     <DialogDescription className="text-gray-500">
-                        Tạo một bản sao (instance) từ dữ liệu gốc hoặc tạo bảng trống mới.
+                        Tạo một bản sao (instance) từ mẫu hoặc tạo bảng trống mới.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -152,11 +151,11 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                     </button>
                 </div>
 
-                <div className="flex-1 overflow-hidden mt-4">
+                <div className="flex-1 overflow-hidden mt-4 min-h-0 flex flex-col">
                     {mode === 'template' ? (
-                        <div className="h-full flex gap-4">
+                        <div className="flex-1 flex gap-4 min-h-0">
                             {/* Template List */}
-                            <div className="w-1/3 border-r border-gray-200 pr-4 flex flex-col">
+                            <div className="w-1/3 border-r border-gray-200 pr-4 flex flex-col min-h-0">
                                 <div className="relative mb-2 shrink-0">
                                     <Database className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
                                     <Input
@@ -166,9 +165,9 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                         className="pl-8 h-9 text-sm bg-gray-50 border-gray-200 focus:bg-white"
                                     />
                                 </div>
-                                <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-wider">Danh sách bảng gốc</h3>
+                                <h3 className="text-[10px] font-bold text-gray-400 uppercase mb-2 tracking-wider">Danh sách mẫu</h3>
 
-                                <ScrollArea className="flex-1 -mr-2 pr-2">
+                                <div className="flex-1 overflow-y-auto -mr-2 pr-2 min-h-0">
                                     <div className="space-y-1 pb-2">
                                         {filteredTemplates.map(table => (
                                             <button
@@ -195,11 +194,11 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                         ))}
                                         {filteredTemplates.length === 0 && (
                                             <div className="text-center py-8 text-gray-400 text-xs italic">
-                                                Không tìm thấy bảng nào
+                                                Không tìm thấy mẫu nào
                                             </div>
                                         )}
                                     </div>
-                                </ScrollArea>
+                                </div>
                             </div>
 
                             {/* Preview */}
@@ -259,7 +258,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-4 h-full overflow-y-auto pr-2">
+                        <div className="space-y-4 flex-1 overflow-y-auto pr-2">
                             {/* Manual Form Content */}
                             <div>
                                 <label className="text-sm font-medium mb-2 block text-gray-700">

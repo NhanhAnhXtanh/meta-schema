@@ -40,6 +40,7 @@ interface LinkFieldDialogProps {
     linkType: '1-n' | 'n-1' | '1-1';
   };
   isEditMode?: boolean;
+  isNameEditable?: boolean;
 }
 
 export function LinkFieldDialog({
@@ -50,8 +51,13 @@ export function LinkFieldDialog({
   visibleNodeIds,
   onConfirm,
   initialValues,
-  isEditMode = false
+  isEditMode = false,
+  isNameEditable = true
 }: LinkFieldDialogProps) {
+  // ... (existing code)
+
+  // ... inside return ...
+
   const [targetType, setTargetType] = useState<'existing' | 'template'>('existing');
   const [selectedTargetNodeId, setSelectedTargetNodeId] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -198,7 +204,10 @@ export function LinkFieldDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl bg-white text-gray-900 border-gray-200 shadow-xl h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className={cn(
+        "bg-white text-gray-900 border-gray-200 shadow-xl flex flex-col p-0 gap-0 overflow-hidden",
+        isEditMode ? "max-w-3xl h-[80vh]" : "max-w-5xl h-[85vh]"
+      )}>
         <DialogHeader className="p-4 border-b border-gray-100 shrink-0">
           <DialogTitle>{isEditMode ? 'Chỉnh Sửa Trường Link' : 'Thêm Trường Link Mới'}</DialogTitle>
           <DialogDescription className="text-gray-500">
@@ -207,101 +216,103 @@ export function LinkFieldDialog({
         </DialogHeader>
 
         <div className="flex flex-1 min-h-0">
-          {/* Left Sidebar: Selection */}
-          <div className="w-[320px] border-r border-gray-200 flex flex-col bg-gray-50/50">
-            {/* Type Toggle */}
-            <div className="p-3 border-b border-gray-100 bg-white">
-              <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-lg">
-                <button
-                  onClick={() => { setTargetType('existing'); setSearchQuery(''); }}
-                  className={cn(
-                    "py-1.5 text-xs font-semibold rounded-md transition-all",
-                    targetType === 'existing' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+          {/* Left Sidebar: Selection - Only show in CREATE mode */}
+          {!isEditMode && (
+            <div className="w-[320px] border-r border-gray-200 flex flex-col bg-gray-50/50 min-h-0">
+              {/* Type Toggle */}
+              <div className="p-3 border-b border-gray-100 bg-white shadow-sm z-10">
+                <div className="grid grid-cols-2 gap-1 p-1 bg-gray-100 rounded-lg">
+                  <button
+                    onClick={() => { setTargetType('existing'); setSearchQuery(''); }}
+                    className={cn(
+                      "py-1.5 text-xs font-semibold rounded-md transition-all",
+                      targetType === 'existing' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                    )}
+                  >
+                    Bảng hiện có
+                  </button>
+                  <button
+                    onClick={() => { setTargetType('template'); setSearchQuery(''); }}
+                    className={cn(
+                      "py-1.5 text-xs font-semibold rounded-md transition-all",
+                      targetType === 'template' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
+                    )}
+                  >
+                    Bản sao từ Data
+                  </button>
+                </div>
+              </div>
+
+              {/* Search */}
+              <div className="p-3 pb-0 bg-gray-50/50 pt-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+                  <Input
+                    placeholder={targetType === 'existing' ? "Tìm bảng..." : "Tìm mẫu..."}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 h-9 text-sm bg-white border-gray-200"
+                  />
+                </div>
+              </div>
+
+              {/* List */}
+              <div className="flex-1 p-3 overflow-y-auto min-h-0">
+                <div className="space-y-1">
+                  {targetType === 'existing' ? (
+                    filteredExistingNodes.length > 0 ? (
+                      filteredExistingNodes.map(node => (
+                        <button
+                          key={node.id}
+                          onClick={() => setSelectedTargetNodeId(node.id)}
+                          className={cn(
+                            "w-full text-left px-3 py-2.5 rounded-lg transition-all border group",
+                            selectedTargetNodeId === node.id
+                              ? "bg-blue-50 border-blue-200 shadow-sm"
+                              : "border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm"
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className={cn("w-2 h-8 rounded-full shrink-0", selectedTargetNodeId === node.id ? "bg-blue-500" : "bg-gray-300")} style={{ backgroundColor: node.data.color }} />
+                            <div className="min-w-0">
+                              <div className={cn("text-sm font-semibold truncate", selectedTargetNodeId === node.id ? "text-blue-900" : "text-gray-700")}>{node.data.label}</div>
+                              <div className="text-[10px] text-gray-400 font-mono truncate">ID: {node.id}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : <div className="text-center py-8 text-xs text-gray-400">Không tìm thấy bảng</div>
+                  ) : (
+                    filteredTemplates.length > 0 ? (
+                      filteredTemplates.map(template => (
+                        <button
+                          key={template.id}
+                          onClick={() => {
+                            setSelectedTemplateId(template.id);
+                            if (!newFieldName) setNewFieldName(template.name.toLowerCase());
+                          }}
+                          className={cn(
+                            "w-full text-left px-3 py-2.5 rounded-lg transition-all border group",
+                            selectedTemplateId === template.id
+                              ? "bg-blue-50 border-blue-200 shadow-sm"
+                              : "border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm"
+                          )}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Database className={cn("w-4 h-4 shrink-0", selectedTemplateId === template.id ? "text-blue-600" : "text-gray-400")} />
+                            <div className="min-w-0">
+                              <div className={cn("text-sm font-semibold truncate", selectedTemplateId === template.id ? "text-blue-900" : "text-gray-700")}>{template.name}</div>
+                              <div className="text-[10px] text-gray-400 truncate">{template.tableName}</div>
+                            </div>
+                          </div>
+                        </button>
+                      ))
+                    ) : <div className="text-center py-8 text-xs text-gray-400">Không tìm thấy mẫu data</div>
                   )}
-                >
-                  Bảng hiện có
-                </button>
-                <button
-                  onClick={() => { setTargetType('template'); setSearchQuery(''); }}
-                  className={cn(
-                    "py-1.5 text-xs font-semibold rounded-md transition-all",
-                    targetType === 'template' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
-                  )}
-                >
-                  Bản sao từ Data
-                </button>
+                </div>
               </div>
             </div>
-
-            {/* Search */}
-            <div className="p-3 pb-0">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
-                <Input
-                  placeholder={targetType === 'existing' ? "Tìm bảng..." : "Tìm mẫu..."}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-9 text-sm bg-white border-gray-200"
-                />
-              </div>
-            </div>
-
-            {/* List */}
-            <ScrollArea className="flex-1 p-3">
-              <div className="space-y-1">
-                {targetType === 'existing' ? (
-                  filteredExistingNodes.length > 0 ? (
-                    filteredExistingNodes.map(node => (
-                      <button
-                        key={node.id}
-                        onClick={() => setSelectedTargetNodeId(node.id)}
-                        className={cn(
-                          "w-full text-left px-3 py-2.5 rounded-lg transition-all border group",
-                          selectedTargetNodeId === node.id
-                            ? "bg-blue-50 border-blue-200 shadow-sm"
-                            : "border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm"
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div className={cn("w-2 h-8 rounded-full shrink-0", selectedTargetNodeId === node.id ? "bg-blue-500" : "bg-gray-300")} style={{ backgroundColor: node.data.color }} />
-                          <div className="min-w-0">
-                            <div className={cn("text-sm font-semibold truncate", selectedTargetNodeId === node.id ? "text-blue-900" : "text-gray-700")}>{node.data.label}</div>
-                            <div className="text-[10px] text-gray-400 font-mono truncate">ID: {node.id}</div>
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  ) : <div className="text-center py-8 text-xs text-gray-400">Không tìm thấy bảng</div>
-                ) : (
-                  filteredTemplates.length > 0 ? (
-                    filteredTemplates.map(template => (
-                      <button
-                        key={template.id}
-                        onClick={() => {
-                          setSelectedTemplateId(template.id);
-                          if (!newFieldName) setNewFieldName(template.name.toLowerCase());
-                        }}
-                        className={cn(
-                          "w-full text-left px-3 py-2.5 rounded-lg transition-all border group",
-                          selectedTemplateId === template.id
-                            ? "bg-blue-50 border-blue-200 shadow-sm"
-                            : "border-transparent hover:bg-white hover:border-gray-200 hover:shadow-sm"
-                        )}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Database className={cn("w-4 h-4 shrink-0", selectedTemplateId === template.id ? "text-blue-600" : "text-gray-400")} />
-                          <div className="min-w-0">
-                            <div className={cn("text-sm font-semibold truncate", selectedTemplateId === template.id ? "text-blue-900" : "text-gray-700")}>{template.name}</div>
-                            <div className="text-[10px] text-gray-400 truncate">{template.tableName}</div>
-                          </div>
-                        </div>
-                      </button>
-                    ))
-                  ) : <div className="text-center py-8 text-xs text-gray-400">Không tìm thấy mẫu data</div>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
+          )}
 
           {/* Right Panel: Content */}
           <div className="flex-1 flex flex-col bg-white min-w-0">

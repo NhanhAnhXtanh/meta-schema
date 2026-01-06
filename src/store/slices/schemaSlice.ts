@@ -3,139 +3,11 @@ import { Node, Edge, Connection, applyNodeChanges, applyEdgeChanges, NodeChange,
 import { TableNodeData, TableColumn } from '@/types/schema';
 
 // Initial state data (moved from App.tsx)
+// Initial state data (moved from App.tsx)
 const COLOR_OPTIONS = [
     '#22c55e', '#a855f7', '#eab308', '#3b82f6', '#ef4444', '#14b8a6',
 ];
 
-const initialNodes: Node<TableNodeData>[] = [
-    {
-        id: '1',
-        type: 'table',
-        position: { x: 0, y: 0 },
-        data: {
-            tableName: 'products',
-            label: 'Products',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'name', type: 'varchar', visible: true },
-                { name: 'description', type: 'varchar', visible: true },
-                { name: 'price', type: 'money', visible: true },
-                { name: 'quantity', type: 'int4', visible: true },
-            ],
-            color: COLOR_OPTIONS[0],
-        },
-    },
-    {
-        id: '2',
-        type: 'table',
-        position: { x: 400, y: -150 },
-        data: {
-            tableName: 'warehouses',
-            label: 'Warehouses',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'name', type: 'varchar', visible: true },
-                { name: 'address', type: 'varchar', visible: true },
-                { name: 'capacity', type: 'int4', visible: true },
-            ],
-            color: COLOR_OPTIONS[1],
-        },
-    },
-    {
-        id: '3',
-        type: 'table',
-        position: { x: 400, y: 100 },
-        data: {
-            tableName: 'suppliers',
-            label: 'Suppliers',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'name', type: 'varchar', visible: true },
-                { name: 'contact', type: 'varchar', visible: true },
-                { name: 'country', type: 'varchar', visible: true },
-            ],
-            color: COLOR_OPTIONS[2],
-        },
-    },
-    {
-        id: '4',
-        type: 'table',
-        position: { x: 800, y: -200 },
-        data: {
-            tableName: 'categories',
-            label: 'Categories',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'name', type: 'varchar', visible: true },
-                { name: 'description', type: 'text', visible: true },
-            ],
-            color: COLOR_OPTIONS[3],
-        },
-    },
-    {
-        id: '5',
-        type: 'table',
-        position: { x: 800, y: -50 },
-        data: {
-            tableName: 'orders',
-            label: 'Orders',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'order_date', type: 'timestamp', visible: true },
-                { name: 'total_amount', type: 'money', visible: true },
-                { name: 'status', type: 'varchar', visible: true },
-            ],
-            color: COLOR_OPTIONS[4],
-        },
-    },
-    {
-        id: '6',
-        type: 'table',
-        position: { x: 800, y: 150 },
-        data: {
-            tableName: 'customers',
-            label: 'Customers',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'name', type: 'varchar', visible: true },
-                { name: 'email', type: 'varchar', visible: true },
-                { name: 'phone', type: 'varchar', visible: true },
-            ],
-            color: COLOR_OPTIONS[5],
-        },
-    },
-    {
-        id: '7',
-        type: 'table',
-        position: { x: 400, y: 350 },
-        data: {
-            tableName: 'reviews',
-            label: 'Reviews',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'rating', type: 'int', visible: true },
-                { name: 'comment', type: 'text', visible: true },
-                { name: 'created_at', type: 'timestamp', visible: true },
-            ],
-            color: COLOR_OPTIONS[0],
-        },
-    },
-    {
-        id: '8',
-        type: 'table',
-        position: { x: 800, y: 350 },
-        data: {
-            tableName: 'inventory',
-            label: 'Inventory',
-            columns: [
-                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-                { name: 'stock_quantity', type: 'int', visible: true },
-                { name: 'last_updated', type: 'timestamp', visible: true },
-            ],
-            color: COLOR_OPTIONS[1],
-        },
-    },
-];
 
 interface SchemaState {
     nodes: Node<TableNodeData>[];
@@ -163,7 +35,7 @@ interface ObjectConnectionPayload {
 
 
 const initialState: SchemaState = {
-    nodes: initialNodes,
+    nodes: [],
     edges: [],
 };
 
@@ -275,6 +147,7 @@ const schemaSlice = createSlice({
 
                 // Update the field
                 node.data.columns[fieldIndex] = { ...oldField, ...updates };
+                node.data._version = Date.now();
 
                 // If name changed, update edges that reference this field
                 if (updates.name && updates.name !== oldName) {
@@ -282,12 +155,21 @@ const schemaSlice = createSlice({
 
                     // Update edges where this field is the source handle (1-n array fields)
                     state.edges.forEach(edge => {
+                        // 1. Array/Link (1-n): Source Handle matches field name
                         if (edge.source === nodeId && edge.sourceHandle === oldName) {
                             edge.sourceHandle = newName;
                         }
-                        // Update edges where this field is the target handle
+                        // 2. Target Handle matches field name
                         if (edge.target === nodeId && edge.targetHandle === oldName) {
                             edge.targetHandle = newName;
+                        }
+                        // 3. Object (n-1): stored in data.objectFieldName
+                        if (edge.source === nodeId && edge.data?.objectFieldName === oldName) {
+                            edge.data.objectFieldName = newName;
+                            // Also update sourceHandle if it matches (it usually does for n-1)
+                            if (edge.sourceHandle === oldName) {
+                                edge.sourceHandle = newName;
+                            }
                         }
                     });
                 }
@@ -504,7 +386,6 @@ const schemaSlice = createSlice({
             const targetNode = state.nodes.find(n => n.id === targetNodeId);
 
             if (sourceNode && targetNode) {
-                // 1. Add 'object' field to Source Node
                 sourceNode.data.columns.push({
                     name: newFieldName,
                     type: 'object',

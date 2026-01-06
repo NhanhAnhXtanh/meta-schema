@@ -149,16 +149,25 @@ export function SchemaDialogs() {
                 onOpenChange={(open) => dispatch(setAddTableDialogOpen(open))}
             />
 
-            <LinkFieldDialog
-                open={linkFieldDialogState.isOpen}
-                onOpenChange={(open) => !open && dispatch(closeLinkFieldDialog())}
-                sourceNode={nodes.find(n => n.id === linkFieldDialogState.sourceNodeId)}
-                allNodes={nodes}
-                visibleNodeIds={visibleNodeIds}
-                onConfirm={handleLinkFieldConfirm}
-                isEditMode={linkFieldDialogState.isEditMode}
-                initialValues={linkFieldDialogState.initialValues}
-            />
+            {linkFieldDialogState.isOpen && (
+                <LinkFieldDialog
+                    open={linkFieldDialogState.isOpen}
+                    onOpenChange={(open) => !open && dispatch(closeLinkFieldDialog())}
+                    sourceNode={nodes.find(n => n.id === linkFieldDialogState.sourceNodeId)}
+                    allNodes={nodes}
+                    visibleNodeIds={visibleNodeIds}
+                    onConfirm={handleLinkFieldConfirm}
+                    isEditMode={linkFieldDialogState.isEditMode}
+                    initialValues={linkFieldDialogState.initialValues}
+                    isNameEditable={(() => {
+                        const sourceNode = nodes.find(n => n.id === linkFieldDialogState.sourceNodeId);
+                        const fieldName = linkFieldDialogState.initialValues?.fieldName;
+                        const field = sourceNode?.data.columns.find(c => c.name === fieldName);
+                        // If field exists, only editable if virtual. If creating a new one (field undefined), it's editable.
+                        return field ? !!field.isVirtual : true;
+                    })()}
+                />
+            )}
 
 
         </>

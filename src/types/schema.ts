@@ -9,6 +9,8 @@ export interface TableColumn {
     isVirtual?: boolean; // Đánh dấu field virtual
     linkedPrimaryKeyField?: string; // Field PK mà field virtual link tới
     relationshipType?: '1-n' | 'n-1' | '1-1' | 'n-n';
+    children?: TableColumn[]; // Defines inline nested structure
+    description?: string;
 }
 
 export interface TableNodeData {

@@ -151,4 +151,77 @@ export const initialNodes: Node<TableNodeData>[] = [
             color: TABLE_COLORS[2],
         },
     },
+    {
+        id: '10',
+        type: 'table',
+        position: { x: 50, y: 600 },
+        data: {
+            tableName: 'cong_dan',
+            label: 'Công Dân (Citizens)',
+            columns: [
+                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+                { name: 'HoVaTen', type: 'varchar', visible: true },
+                {
+                    name: 'DiaChi',
+                    type: 'object',
+                    visible: true,
+                    children: [
+                        { name: "ThanhPho", type: "varchar", visible: true },
+                        { name: "XaPhuong", type: "varchar", visible: true }
+                    ]
+                },
+                {
+                    name: 'GiayToTuyThan',
+                    type: 'array',
+                    visible: true,
+                    children: [
+                        { name: "SoGiayTo", type: "varchar", visible: true },
+                        { name: "LoaiGiayTo", type: "varchar", visible: true },
+                        {
+                            name: "chi_tiet",
+                            type: "object",
+                            visible: true,
+                            children: [
+                                { name: "NgayCap", type: "date", visible: true },
+                                { name: "NoiCap", type: "varchar", visible: true }
+                            ]
+                        }
+                    ]
+                },
+                { name: 'ho_khau', type: 'object', visible: true, description: 'Sổ Hộ Khẩu' },
+            ],
+            color: TABLE_COLORS[0],
+        },
+    },
+    {
+        id: '11',
+        type: 'table',
+        position: { x: 400, y: 600 },
+        data: {
+            tableName: 'dia_chi',
+            label: 'Địa Chỉ (Addresses)',
+            columns: [
+                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+                { name: 'ThanhPho', type: 'varchar', visible: true },
+                { name: 'XaPhuong', type: 'varchar', visible: true },
+            ],
+            color: TABLE_COLORS[1],
+        },
+    },
+    {
+        id: '12',
+        type: 'table',
+        position: { x: 800, y: 600 },
+        data: {
+            tableName: 'giay_to_tuy_than',
+            label: 'Giấy Tờ Tùy Thân',
+            columns: [
+                { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+                { name: 'SoGiayTo', type: 'varchar', visible: true },
+                { name: 'LoaiGiayTo', type: 'varchar', visible: true },
+                { name: 'cong_dan_id', type: 'uuid', visible: true, isForeignKey: true },
+            ],
+            color: TABLE_COLORS[2],
+        },
+    },
 ];

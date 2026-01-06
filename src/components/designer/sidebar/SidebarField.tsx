@@ -18,6 +18,7 @@ interface SidebarFieldProps {
     onDrop: (e: React.DragEvent, index: number) => void;
     isDragging?: boolean;
     isDragOver?: boolean;
+    isReadOnly?: boolean;
 }
 
 
@@ -25,7 +26,7 @@ interface SidebarFieldProps {
 const SidebarFieldBase = ({
     nodeId, field, index,
     onDragStart, onDragOver, onDrop,
-    isDragging, isDragOver
+    isDragging, isDragOver, isReadOnly
 }: SidebarFieldProps) => {
     const dispatch = useAppDispatch();
 
@@ -42,6 +43,7 @@ const SidebarFieldBase = ({
 
     // Debounce update logic
     useEffect(() => {
+        if (isReadOnly) return; // Skip updates if readonly
         const timer = setTimeout(() => {
             if (localName !== (field.name || '') && (field.isVirtual === true || field.type === 'object' || field.type === 'array')) {
                 dispatch(updateField({ nodeId, fieldIndex: index, updates: { name: localName } }));
@@ -49,7 +51,7 @@ const SidebarFieldBase = ({
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [localName, nodeId, index, dispatch, field.name, field.isVirtual, field.type]);
+    }, [localName, nodeId, index, dispatch, field.name, field.isVirtual, field.type, isReadOnly]);
 
 
     const edges = useAppSelector(state => state.schema.present.edges);
@@ -88,7 +90,10 @@ const SidebarFieldBase = ({
     }
 
     const targetNode = targetNodeId ? nodes.find(n => n.id === targetNodeId) : null;
-    const hasNestedFields = !!targetNode;
+
+    // Check for inline children (user provided via schema definition)
+    const hasInlineChildren = !!field.children && field.children.length > 0;
+    const hasNestedFields = !!targetNode || hasInlineChildren;
 
     // Check if target node is visible on board
     const isTargetVisible = targetNode ? visibleNodeIds.includes(targetNode.id) : false;
@@ -96,26 +101,28 @@ const SidebarFieldBase = ({
     return (
         <div className="flex flex-col">
             <div
-                draggable
+                draggable={!isReadOnly}
                 onDragStart={(e) => {
+                    if (isReadOnly) return;
                     if ((e.target as HTMLElement).tagName === 'INPUT') {
                         e.preventDefault();
                         return;
                     }
                     onDragStart(e, index);
                 }}
-                onDragOver={(e) => onDragOver(e, index)}
-                onDrop={(e) => onDrop(e, index)}
+                onDragOver={(e) => !isReadOnly && onDragOver(e, index)}
+                onDrop={(e) => !isReadOnly && onDrop(e, index)}
                 className={cn(
-                    "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 rounded-md cursor-move transition-all duration-150 border border-transparent hover:border-gray-200",
+                    "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 rounded-md transition-all duration-150 border border-transparent hover:border-gray-200",
                     isDragging && "opacity-50",
                     isDragOver && "border-blue-500 bg-blue-50",
                     field.isVirtual === true && "bg-amber-50 hover:bg-amber-100 border-amber-200/50",
-                    field.isVirtual !== true && field.type !== 'object' && "bg-gray-100 hover:bg-gray-150"
+                    field.isVirtual !== true && field.type !== 'object' && "bg-gray-100 hover:bg-gray-150",
+                    isReadOnly && "cursor-default hover:bg-transparent pl-1" // Simplify for readonly
                 )}
             >
-                {/* Drag Handle - Always visible */}
-                <GripVertical className="w-3 h-3 text-gray-400 cursor-move hover:text-gray-600 transition-colors flex-shrink-0" />
+                {/* Drag Handle - Hidden if ReadOnly */}
+                {!isReadOnly && <GripVertical className="w-3 h-3 text-gray-400 cursor-move hover:text-gray-600 transition-colors flex-shrink-0" />}
 
                 {/* Expansion Toggle */}
                 {hasNestedFields && (
@@ -127,13 +134,15 @@ const SidebarFieldBase = ({
                     </button>
                 )}
 
-                {/* Visibility -> For nested parent, we keep it simple */}
-                <input
-                    type="checkbox"
-                    checked={field.visible !== false}
-                    onChange={() => dispatch(toggleFieldVisibility({ nodeId, fieldIndex: index }))}
-                    className="w-4 h-4 cursor-pointer accent-blue-600"
-                />
+                {/* Visibility - Hidden if ReadOnly */}
+                {!isReadOnly && (
+                    <input
+                        type="checkbox"
+                        checked={field.visible !== false}
+                        onChange={() => dispatch(toggleFieldVisibility({ nodeId, fieldIndex: index }))}
+                        className="w-4 h-4 cursor-pointer accent-blue-600"
+                    />
+                )}
 
 
                 {/* Name Input */}
@@ -144,11 +153,11 @@ const SidebarFieldBase = ({
                         onFocus={() => setIsEditing(true)}
                         onBlur={() => setIsEditing(false)}
                         placeholder="Field Name"
-                        disabled={field.isVirtual !== true && field.type !== 'object' && field.type !== 'array'}
+                        disabled={isReadOnly || !field.isVirtual}
                         className={cn(
                             "h-7 flex-1 text-xs bg-transparent border-0 text-gray-900 font-bold font-mono px-1 focus:bg-white focus:border-gray-500 focus:px-2 rounded placeholder:text-gray-400",
                             field.visible === false && "line-through text-gray-500",
-                            (field.isVirtual !== true && field.type !== 'object' && field.type !== 'array') && "cursor-not-allowed disabled:opacity-100"
+                            (isReadOnly || !field.isVirtual) && "cursor-not-allowed disabled:opacity-100 disabled:bg-transparent"
                         )}
                     />
                     {!hasNestedFields && field.isVirtual && linkedTableName && (
@@ -159,19 +168,21 @@ const SidebarFieldBase = ({
                     {hasNestedFields && targetNode && (
                         <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 rounded border border-blue-200 min-w-0 max-w-[120px]">
                             {/* Toggle Board Visibility of Linked Table */}
-                            <input
-                                type="checkbox"
-                                checked={isTargetVisible}
-                                onChange={() => {
-                                    if (isTargetVisible) {
-                                        dispatch(removeVisibleNodeId(targetNode.id));
-                                    } else {
-                                        dispatch(addVisibleNodeId(targetNode.id));
-                                    }
-                                }}
-                                className="w-3 h-3 cursor-pointer accent-blue-600 flex-shrink-0"
-                                title="Show/Hide Table on Board"
-                            />
+                            {!isReadOnly && (
+                                <input
+                                    type="checkbox"
+                                    checked={isTargetVisible}
+                                    onChange={() => {
+                                        if (isTargetVisible) {
+                                            dispatch(removeVisibleNodeId(targetNode.id));
+                                        } else {
+                                            dispatch(addVisibleNodeId(targetNode.id));
+                                        }
+                                    }}
+                                    className="w-3 h-3 cursor-pointer accent-blue-600 flex-shrink-0"
+                                    title="Show/Hide Table on Board"
+                                />
+                            )}
                             <span className="text-xs text-blue-600 font-medium truncate block" onClick={() => !isTargetVisible && dispatch(addVisibleNodeId(targetNode.id))}>
                                 : {targetNode.data.label}
                             </span>
@@ -179,73 +190,71 @@ const SidebarFieldBase = ({
                     )}
                 </div>
 
-                {/* Only show controls for virtual/object fields */}
-                {/* Only show controls for virtual/object fields */}
-                {(field.isVirtual === true || field.type === 'object') && (
-                    <div className="flex items-center gap-1 ml-auto flex-shrink-0">
-                        <div className="flex items-center gap-1 mr-1">
-                            <span className="text-[10px] text-gray-900 font-bold font-mono tracking-tighter max-w-[60px] truncate" title={targetNode ? targetNode.data.label : field.type}>
-                                {targetNode ? targetNode.data.label : field.type}
-                            </span>
-
-                            {/* Type Selector for Virtual Fields */}
-                            <div className="relative">
-                                <button
-                                    className="px-1.5 py-0.5 text-[10px] rounded border transition-colors flex items-center gap-1 font-bold bg-blue-100 border-blue-300 text-blue-900 cursor-default"
-                                >
-                                    {field.isVirtual === true ? 'Array' : 'Object'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Key Toggles for Virtual Fields */}
-                        <div className="flex items-center gap-0.5">
-                            <button
-                                onClick={() => {
-                                    dispatch(updateField({ nodeId, fieldIndex: index, updates: { isNotNull: !field.isNotNull } }));
-                                }}
-                                className={cn(
-                                    "h-6 w-6 flex items-center justify-center rounded transition-colors font-bold text-[10px]",
-                                    field.isNotNull ? "text-red-500 bg-red-50" : "text-gray-400 hover:text-gray-600"
-                                )}
-                                title="Not Null"
-                            >N</button>
-
-                            <button
-                                onClick={() => {
-                                    dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }));
-                                }}
-                                className={cn(
-                                    "h-6 w-6 flex items-center justify-center rounded transition-colors",
-                                    field.isPrimaryKey ? "text-orange-500 bg-orange-50" : "text-gray-400 hover:text-gray-600"
-                                )}
-                                title="Primary Key"
-                            ><Key className="w-3.5 h-3.5" /></button>
-
-                            <button
-                                onClick={() => {
-                                    dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }));
-                                }}
-                                className={cn(
-                                    "h-6 w-6 flex items-center justify-center rounded transition-colors",
-                                    field.isForeignKey ? "text-blue-500 bg-blue-50" : "text-gray-400 hover:text-gray-600"
-                                )}
-                                title="Foreign Key"
-                            ><Link2 className="w-3.5 h-3.5" /></button>
-                        </div>
+                {/* Schema Definition Display */}
+                <div className="flex items-center gap-2 ml-auto shrink-0 mr-2">
+                    {/* 1. TYPE INDICATOR */}
+                    <div className={cn(
+                        "text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border uppercase tracking-wider",
+                        field.type === 'object' || field.type === 'array' || field.type === 'jsonb'
+                            ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-gray-50 text-gray-500 border-gray-200"
+                    )}>
+                        {field.isVirtual ? 'Array' : field.type}
                     </div>
-                )}
 
-                {/* For base fields, just show type as read-only text */}
-                {field.isVirtual !== true && field.type !== 'object' && (
-                    <div className="flex items-center gap-1.5 ml-2">
-                        <span className="text-[10px] text-gray-600 font-bold font-mono px-2 py-1 bg-gray-100 rounded border border-gray-300">
-                            {field.type}
-                        </span>
-                    </div>
-                )}
+                    {/* 2. REF STATUS */}
+                    {(field.type === 'object' || field.type === 'array' || field.isVirtual) && (
+                        <div className={cn(
+                            "flex items-center gap-1 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border uppercase",
+                            targetNode
+                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                : "bg-orange-50 text-orange-700 border-orange-200"
+                        )}>
+                            <span>Ref: {targetNode ? 'True' : 'False'}</span>
+                        </div>
+                    )}
 
-                {(field.isVirtual || field.type === 'object') && (
+                    {/* 3. REF TARGET */}
+                    {targetNode && (
+                        <div className="flex items-center gap-1 text-[9px] font-bold font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
+                            <span>→ {targetNode.data.tableName || targetNode.data.label}</span>
+                        </div>
+                    )}
+
+                    {/* 4. KEY ATTRIBUTES Toggle (Hidden if ReadOnly or NOT VIRTUAL) */}
+                    {!isReadOnly && field.isVirtual && (
+                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-2 ml-1">
+                            <button
+                                onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }))}
+                                className={cn(
+                                    "w-5 h-5 flex items-center justify-center rounded text-[8px] font-bold transition-all",
+                                    field.isPrimaryKey ? "bg-yellow-100 text-yellow-700 ring-1 ring-yellow-300" : "text-gray-300 hover:text-gray-500"
+                                )}
+                                title="Primary Key (PK)"
+                            >PK</button>
+                            <button
+                                onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }))}
+                                className={cn(
+                                    "w-5 h-5 flex items-center justify-center rounded text-[8px] font-bold transition-all",
+                                    field.isForeignKey ? "bg-purple-100 text-purple-700 ring-1 ring-purple-300" : "text-gray-300 hover:text-gray-500"
+                                )}
+                                title="Foreign Key (FK)"
+                            >FK</button>
+                        </div>
+                    )}
+
+                    {/* Show PK/FK Badges (Read-Only) if not editable */}
+                    {(!field.isVirtual || isReadOnly) && (field.isPrimaryKey || field.isForeignKey) && (
+                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-2 ml-1">
+                            {field.isPrimaryKey && <span className="bg-yellow-100 text-yellow-700 text-[8px] font-bold px-1 rounded">PK</span>}
+                            {field.isForeignKey && <span className="bg-purple-100 text-purple-700 text-[8px] font-bold px-1 rounded">FK</span>}
+                        </div>
+                    )}
+
+                </div>
+
+                {/* Action Buttons (Edit/Delete) - Hidden if ReadOnly */}
+                {!isReadOnly && field.isVirtual && (
                     <>
                         <button
                             onClick={() => {
@@ -277,7 +286,7 @@ const SidebarFieldBase = ({
                                     if (edge && edge.sourceHandle && edge.targetHandle) {
                                         initialValues = {
                                             targetNodeId: edge.target,
-                                            sourceKey: edge.sourceHandle, // FK
+                                            sourceKey: edge.data?.sourceFK || edge.sourceHandle, // FK (stored in data for n-1)
                                             targetKey: edge.targetHandle, // PK
                                             fieldName: field.name,
                                             linkType: 'n-1' as const
@@ -304,25 +313,33 @@ const SidebarFieldBase = ({
                                 }
                             }}
                             className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            title="Edit Field"
+                            title={field.isVirtual ? "Edit Field Configuration" : "Connect to Table"}
                         >
-                            <Edit2 className="w-3.5 h-3.5" />
+                            {field.isVirtual ? <Edit2 className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
                         </button>
-                        <button
-                            onClick={() => dispatch(deleteField({ nodeId, fieldIndex: index }))}
-                            className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                            title="Delete Field"
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+
+                        {/* DELETE BUTTON: ONLY FOR VIRTUAL FIELDS */}
+                        {field.isVirtual && (
+                            <button
+                                onClick={() => dispatch(deleteField({ nodeId, fieldIndex: index }))}
+                                className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Delete Field"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                     </>
                 )}
 
             </div>
 
-            {/* Nested Fields View currently moved outside the field row styling to look like a tree */}
-            {isExpanded && targetNode && (
-                <NestedFieldsList nodeId={targetNode.id} />
+            {/* Nested Fields View - Pass explicit field.children if no target node */}
+            {isExpanded && (
+                <NestedFieldsList
+                    nodeId={targetNode ? targetNode.id : undefined}
+                    fields={!targetNode ? field.children : undefined}
+                    isReadOnly={isReadOnly}
+                />
             )}
         </div>
     );
