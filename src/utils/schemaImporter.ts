@@ -25,12 +25,25 @@ export const importSchema = (jsonData: any): { nodes: Node<TableNodeData>[], edg
                         name,
                         type: bsonTypeToType(schema.bsonType),
                         isPrimaryKey: required.includes(name) && name === 'id',
-                        isForeignKey: false,
+                        isForeignKey: schema.isForeignKey || false, // Default from generic schema
                         isNotNull: required.includes(name),
                         visible: true,
+                        isRef: schema.isRef || false,
                         children: extractChildren(schema),
                         description: schema.description,
                     }));
+
+                // Apply instance-specific column overrides (e.g. FK/Ref only on this instance)
+                if (instance.columnSettings) {
+                    columns.forEach((col: any) => {
+                        const settings = instance.columnSettings[col.name];
+                        if (settings) {
+                            if (settings.isForeignKey !== undefined) col.isForeignKey = settings.isForeignKey;
+                            if (settings.isRef !== undefined) col.isRef = settings.isRef;
+                            if (settings.isPrimaryKey !== undefined) col.isPrimaryKey = settings.isPrimaryKey;
+                        }
+                    });
+                }
 
                 // Add virtual fields back for this instance
                 if (collection.virtualFields) {
@@ -46,6 +59,7 @@ export const importSchema = (jsonData: any): { nodes: Node<TableNodeData>[], edg
                             isNotNull: false,
                             visible: vf.visible !== false,
                             isVirtual: true,
+                            isRef: vf.isRef || false,
                             linkedPrimaryKeyField: vf.linkedPrimaryKeyField,
                         } as any);
                     });
@@ -74,9 +88,10 @@ export const importSchema = (jsonData: any): { nodes: Node<TableNodeData>[], edg
                     name,
                     type: bsonTypeToType(schema.bsonType),
                     isPrimaryKey: required.includes(name) && name === 'id',
-                    isForeignKey: false,
+                    isForeignKey: schema.isForeignKey || false,
                     isNotNull: required.includes(name),
                     visible: true,
+                    isRef: schema.isRef || false,
                     children: extractChildren(schema),
                     description: schema.description,
                 }));
@@ -101,19 +116,24 @@ export const importSchema = (jsonData: any): { nodes: Node<TableNodeData>[], edg
         if (collection.relationships) {
             collection.relationships.forEach((rel: any) => {
                 const sourceNode = nodes.find(n => n.id === rel.instanceId);
-                const targetNode = nodes.find(n => n.data.tableName === rel.relatedCollection);
+                // Use relatedInstanceId if available to connect to the exact instance
+                const targetNode = nodes.find(n =>
+                    rel.relatedInstanceId ? n.id === rel.relatedInstanceId : n.data.tableName === rel.relatedCollection
+                );
 
                 if (sourceNode && targetNode) {
-                    const edgeId = `${sourceNode.id}-${rel.field}-to-${targetNode.id}`;
+                    const sourceHandle = rel.field;
+                    const targetHandle = rel.targetField || 'id'; // Fallback to 'id' for old exports
+                    const edgeId = `${sourceNode.id}-${sourceHandle}-to-${targetNode.id}-${targetHandle}`;
 
                     // Avoid duplicates
                     if (!edges.some(e => e.id === edgeId)) {
                         edges.push({
                             id: edgeId,
-                            source: rel.direction === 'outgoing' ? sourceNode.id : targetNode.id,
-                            target: rel.direction === 'outgoing' ? targetNode.id : sourceNode.id,
-                            sourceHandle: rel.direction === 'outgoing' ? rel.field : 'id',
-                            targetHandle: rel.direction === 'outgoing' ? 'id' : rel.field,
+                            source: sourceNode.id,
+                            target: targetNode.id,
+                            sourceHandle: sourceHandle,
+                            targetHandle: targetHandle,
                             type: 'relationship',
                             data: { relationshipType: rel.type }
                         });

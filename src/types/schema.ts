@@ -11,6 +11,7 @@ export interface TableColumn {
     relationshipType?: '1-n' | 'n-1' | '1-1' | 'n-n';
     children?: TableColumn[]; // Defines inline nested structure
     description?: string;
+    isRef?: boolean; // Đánh dấu field là reference
 }
 
 export interface TableNodeData {

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Database, LayoutGrid, FileJson, Download } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { addTable } from '@/store/slices/schemaSlice';
+import { addTable, addEdge } from '@/store/slices/schemaSlice';
 import { addVisibleNodeId, setVisibleNodeIds } from '@/store/slices/uiSlice';
 import { initialNodes } from '@/data/initialSchema';
 import { cn } from '@/lib/utils';
@@ -72,6 +72,11 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                 columns: node.data.columns
             }));
             dispatch(addVisibleNodeId(node.id));
+        });
+
+        // Add relationships (edges)
+        edges.forEach(edge => {
+            dispatch(addEdge(edge));
         });
 
         onOpenChange(false);

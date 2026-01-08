@@ -36,6 +36,16 @@ const generateFieldSchema = (field: TableColumn): any => {
         schema.description = field.description;
     }
 
+    // Add isRef flag if exists
+    if (field.isRef) {
+        schema.isRef = true;
+    }
+
+    // Add isForeignKey flag if exists
+    if (field.isForeignKey) {
+        schema.isForeignKey = true;
+    }
+
     // Handle object type with nested fields
     if (field.type === 'object' && field.children && field.children.length > 0) {
         schema.properties = {};
@@ -94,7 +104,7 @@ export const generateSchema = (
     }, {} as Record<string, Node<TableNodeData>[]>);
 
     const collections = Object.entries(groupedByTable).map(([tableName, instances]) => {
-        // Use the first instance as the base schema
+        // Use the first instance as the template
         const baseNode = instances[0];
         const properties: Record<string, any> = {};
         const requiredFields: string[] = [];
@@ -139,6 +149,7 @@ export const generateSchema = (
                     type: col.type,
                     linkedPrimaryKeyField: col.linkedPrimaryKeyField,
                     visible: col.visible,
+                    isRef: col.isRef,
                 }))
         );
 
@@ -161,20 +172,21 @@ export const generateSchema = (
             validator.$jsonSchema.required = requiredFields;
         }
 
-        // Collect all relationships from all instances
+        // Collect relationships - ONLY outgoing to avoid duplicates
         const allRelationships = instances.flatMap(node => {
             return edges
-                .filter(edge => edge.source === node.id || edge.target === node.id)
+                .filter(edge => edge.source === node.id) // Only source-side records the relationship
                 .map(edge => {
-                    const isSource = edge.source === node.id;
-                    const relatedNode = nodes.find(n => n.id === (isSource ? edge.target : edge.source));
+                    const targetNode = nodes.find(n => n.id === edge.target);
 
                     return {
                         instanceId: node.id,
-                        field: isSource ? edge.sourceHandle : edge.targetHandle,
-                        relatedCollection: relatedNode?.data.tableName || 'unknown',
+                        field: edge.sourceHandle, // The exact field name in source
+                        targetField: edge.targetHandle, // The exact field name in target
+                        relatedCollection: targetNode?.data.tableName || 'unknown',
+                        relatedInstanceId: edge.target,
                         type: edge.data?.relationshipType || '1-n',
-                        direction: isSource ? 'outgoing' : 'incoming'
+                        direction: 'outgoing'
                     };
                 });
         });
@@ -182,10 +194,27 @@ export const generateSchema = (
         return {
             name: tableName,
             displayName: baseNode.data.label,
-            instances: instances.map(node => ({
-                id: node.id,
-                label: node.data.label,
-            })),
+            instances: instances.map(node => {
+                // Capture instance-specific column settings
+                const columnSettings = node.data.columns
+                    .filter(c => !c.isVirtual)
+                    .reduce((acc, col) => {
+                        if (col.isForeignKey || col.isRef || col.isPrimaryKey) {
+                            acc[col.name] = {
+                                isForeignKey: col.isForeignKey,
+                                isRef: col.isRef,
+                                isPrimaryKey: col.isPrimaryKey
+                            };
+                        }
+                        return acc;
+                    }, {} as Record<string, any>);
+
+                return {
+                    id: node.id,
+                    label: node.data.label,
+                    columnSettings: Object.keys(columnSettings).length > 0 ? columnSettings : undefined
+                };
+            }),
             validator,
             indexes: indexes.length > 0 ? indexes : undefined,
             relationships: allRelationships.length > 0 ? allRelationships : undefined,
@@ -199,26 +228,4 @@ export const generateSchema = (
         database: 'my_database',
         collections,
     };
-};
-
-// Generate shell commands to create collections with validators
-export const generateCommands = (schema: any): string => {
-    let commands = `// Schema Creation Commands\n`;
-    commands += `// Generated at: ${schema.timestamp}\n\n`;
-    commands += `use ${schema.database};\n\n`;
-
-    schema.collections.forEach((collection: any) => {
-        commands += `// Create collection: ${collection.name}\n`;
-        commands += `db.createCollection("${collection.name}", ${JSON.stringify({ validator: collection.validator }, null, 2)});\n\n`;
-
-        // Add indexes
-        if (collection.indexes) {
-            collection.indexes.forEach((index: any) => {
-                commands += `db.${collection.name}.createIndex(${JSON.stringify(index.key)}, { unique: ${index.unique || false}, name: "${index.name}" });\n`;
-            });
-            commands += '\n';
-        }
-    });
-
-    return commands;
 };

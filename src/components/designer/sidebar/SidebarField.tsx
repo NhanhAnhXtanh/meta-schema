@@ -261,7 +261,7 @@ const SidebarFieldBase = ({
                                 onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }))}
                                 className={cn(
                                     "w-5 h-5 flex items-center justify-center rounded text-[8px] font-bold transition-all",
-                                    field.isForeignKey ? "bg-purple-100 text-purple-700 ring-1 ring-purple-300" : "text-gray-300 hover:text-gray-500"
+                                    field.isForeignKey ? "bg-sky-100 text-sky-700 ring-1 ring-sky-300" : "text-gray-300 hover:text-gray-500"
                                 )}
                                 title="Foreign Key (FK)"
                             >FK</button>
@@ -272,7 +272,7 @@ const SidebarFieldBase = ({
                     {(!field.isVirtual || isReadOnly) && (field.isPrimaryKey || field.isForeignKey) && (
                         <div className="flex items-center gap-0.5 border-l border-gray-200 pl-1 ml-1 shrink-0">
                             {field.isPrimaryKey && <span className="bg-yellow-100 text-yellow-700 text-[8px] font-bold px-1 rounded">PK</span>}
-                            {field.isForeignKey && <span className="bg-purple-100 text-purple-700 text-[8px] font-bold px-1 rounded">FK</span>}
+                            {field.isForeignKey && <span className="bg-sky-100 text-sky-700 text-[8px] font-bold px-1 rounded">FK</span>}
                         </div>
                     )}
 
