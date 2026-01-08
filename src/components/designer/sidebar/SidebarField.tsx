@@ -77,8 +77,7 @@ const SidebarFieldBase = ({
         }
     }
 
-    const isObjectField = field.type === 'object';
-    const isVirtualField = field.isVirtual;
+
 
 
 
@@ -123,12 +122,13 @@ const SidebarFieldBase = ({
                 onDragOver={(e) => !isReadOnly && onDragOver(e, index)}
                 onDrop={(e) => !isReadOnly && onDrop(e, index)}
                 className={cn(
-                    "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 rounded-md transition-all duration-150 border border-transparent hover:border-gray-200",
+                    "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 rounded-md transition-all duration-150 border border-transparent hover:border-gray-200 overflow-hidden",
                     isDragging && "opacity-50",
                     isDragOver && "border-blue-500 bg-blue-50",
-                    field.isVirtual === true && "bg-amber-50 hover:bg-amber-100 border-amber-200/50",
-                    field.isVirtual !== true && field.type !== 'object' && "bg-gray-100 hover:bg-gray-150",
-                    isReadOnly && "cursor-default hover:bg-transparent pl-1" // Simplify for readonly
+                    field.isVirtual === true
+                        ? "bg-amber-50 hover:bg-amber-100 border-amber-200"
+                        : "bg-gray-100 hover:bg-gray-200 border-gray-200", // Darker gray
+                    isReadOnly && "cursor-default hover:bg-transparent pl-1"
                 )}
             >
                 {/* Drag Handle - Hidden if ReadOnly */}
@@ -201,39 +201,43 @@ const SidebarFieldBase = ({
                 </div>
 
                 {/* Schema Definition Display */}
-                <div className="flex items-center gap-2 ml-auto shrink-0 mr-2">
+                <div className="flex items-center gap-1 ml-auto shrink-0 max-w-[40%] overflow-hidden justify-end">
                     {/* 1. TYPE INDICATOR */}
                     <div className={cn(
-                        "text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border uppercase tracking-wider",
-                        field.type === 'object' || field.type === 'array' || field.type === 'jsonb'
-                            ? "bg-purple-50 text-purple-700 border-purple-200"
-                            : "bg-gray-50 text-gray-500 border-gray-200"
+                        "text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0",
+                        field.isVirtual
+                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                            : field.type === 'array'
+                                ? "bg-orange-100 text-orange-700 border-orange-200"
+                                : (field.type === 'object' || field.type === 'jsonb')
+                                    ? "bg-violet-100 text-violet-700 border-violet-200"
+                                    : "bg-gray-50 text-gray-500 border-gray-200"
                     )}>
-                        {field.isVirtual ? 'Array' : field.type}
+                        {field.isVirtual ? 'Virtual' : field.type}
                     </div>
 
                     {/* 2. REF STATUS */}
                     {(field.type === 'object' || field.type === 'array' || field.isVirtual) && (
                         <div className={cn(
-                            "flex items-center gap-1 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border uppercase",
+                            "flex items-center gap-1 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border uppercase shrink-0",
                             targetNode
                                 ? "bg-blue-50 text-blue-700 border-blue-200"
                                 : "bg-orange-50 text-orange-700 border-orange-200"
                         )}>
-                            <span>Ref: {targetNode ? 'True' : 'False'}</span>
+                            <span className="truncate max-w-[80px]">Ref: {targetNode ? 'True' : 'False'}</span>
                         </div>
                     )}
 
-                    {/* 3. REF TARGET */}
+                    {/* 3. REF TARGET - Hidden on small screens or text truncated */}
                     {targetNode && (
-                        <div className="flex items-center gap-1 text-[9px] font-bold font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">
-                            <span>→ {targetNode.data.tableName || targetNode.data.label}</span>
+                        <div className="hidden xl:flex items-center gap-1 text-[9px] font-bold font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200 shrink-0 max-w-[80px]">
+                            <span className="truncate">→ {targetNode.data.tableName || targetNode.data.label}</span>
                         </div>
                     )}
 
                     {/* 4. KEY ATTRIBUTES Toggle (Hidden if ReadOnly or NOT VIRTUAL) */}
                     {!isReadOnly && field.isVirtual && (
-                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-2 ml-1">
+                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-1 ml-1 shrink-0">
                             <button
                                 onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }))}
                                 className={cn(
@@ -253,9 +257,9 @@ const SidebarFieldBase = ({
                         </div>
                     )}
 
-                    {/* Show PK/FK Badges (Read-Only) if not editable */}
+                    {/* Show PK/FK Badges (Read-Only) if not editable - Compact Version */}
                     {(!field.isVirtual || isReadOnly) && (field.isPrimaryKey || field.isForeignKey) && (
-                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-2 ml-1">
+                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-1 ml-1 shrink-0">
                             {field.isPrimaryKey && <span className="bg-yellow-100 text-yellow-700 text-[8px] font-bold px-1 rounded">PK</span>}
                             {field.isForeignKey && <span className="bg-purple-100 text-purple-700 text-[8px] font-bold px-1 rounded">FK</span>}
                         </div>
@@ -296,7 +300,7 @@ const SidebarFieldBase = ({
                                     if (edge && edge.sourceHandle && edge.targetHandle) {
                                         initialValues = {
                                             targetNodeId: edge.target,
-                                            sourceKey: edge.data?.sourceFK || edge.sourceHandle, // FK (stored in data for n-1)
+                                            sourceKey: (edge.data?.sourceFK as string) || edge.sourceHandle || '', // FK (stored in data for n-1)
                                             targetKey: edge.targetHandle, // PK
                                             fieldName: field.name,
                                             linkType: 'n-1' as const

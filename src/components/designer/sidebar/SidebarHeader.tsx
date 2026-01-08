@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Plus, Search, Undo2, Redo2, LayoutDashboard } from 'lucide-react';
+import { Plus, Search, Undo2, Redo2, LayoutDashboard, ChevronLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -11,9 +11,10 @@ import { ActionCreators } from 'redux-undo';
 interface SidebarHeaderProps {
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    onCollapse?: () => void;
 }
 
-export function SidebarHeader({ searchQuery, setSearchQuery }: SidebarHeaderProps) {
+export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: SidebarHeaderProps) {
     const dispatch = useAppDispatch();
 
     // Schema Data for Auto Layout
@@ -57,7 +58,7 @@ export function SidebarHeader({ searchQuery, setSearchQuery }: SidebarHeaderProp
         <div className="p-4 border-b border-gray-200 space-y-3 bg-white sticky top-0 z-10">
             <div className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                    <span>Tables</span>
+                    <span className="hidden xl:inline">Tables</span>
                 </h2>
 
                 {/* Actions Toolbar */}
@@ -94,13 +95,30 @@ export function SidebarHeader({ searchQuery, setSearchQuery }: SidebarHeaderProp
                     </Button>
                     <div className="w-px h-4 bg-gray-300 mx-1" />
                     <Button
-                        size="sm"
+                        variant="ghost"
+                        size="icon"
                         onClick={() => dispatch(setAddTableDialogOpen(true))}
-                        className="bg-blue-600 hover:bg-blue-700 text-white h-7 px-2 text-xs"
+                        className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                        title="Add Table"
                     >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Add
+                        <Plus className="w-4 h-4" />
                     </Button>
+
+                    {/* Minimize Button */}
+                    {onCollapse && (
+                        <>
+                            <div className="w-px h-4 bg-gray-300 mx-1" />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-gray-500 hover:text-gray-900"
+                                onClick={onCollapse}
+                                title="Thu gọn"
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
             <div className="relative">

@@ -154,31 +154,36 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
               {/* Badges */}
               <div className="flex gap-1 items-center ml-auto pointer-events-none">
                 {column.isVirtual && (
-                  <span className="text-xs bg-green-200 text-green-800 px-1.5 py-0.5 rounded font-semibold">
+                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200/50 rounded shadow-sm font-bold select-none" title="Virtual Field">
                     V
                   </span>
                 )}
                 {column.isPrimaryKey && (
-                  <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
+                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-200/50 rounded shadow-sm font-bold select-none" title="Primary Key">
                     PK
                   </span>
                 )}
                 {column.isForeignKey && (
-                  <span className="text-xs bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-semibold">
+                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-sky-100 text-sky-700 border border-sky-200/50 rounded shadow-sm font-bold select-none" title="Foreign Key">
                     FK
                   </span>
                 )}
                 {column.type === 'object' && (
                   <>
-                    <span className="text-xs bg-purple-200 text-purple-800 px-1.5 py-0.5 rounded font-semibold">
+                    <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-violet-100 text-violet-700 border border-violet-200/50 rounded shadow-sm font-bold select-none" title="Object">
                       O
                     </span>
                     {column.primaryKeyField && (
-                      <span className="text-xs bg-yellow-200 text-yellow-800 px-1.5 py-0.5 rounded font-semibold">
+                      <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-200/50 rounded shadow-sm font-bold select-none" title="Linked Primary Key">
                         PK
                       </span>
                     )}
                   </>
+                )}
+                {column.type === 'array' && (
+                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-orange-100 text-orange-700 border border-orange-200/50 rounded shadow-sm font-bold select-none" title="Array">
+                    A
+                  </span>
                 )}
               </div>
 

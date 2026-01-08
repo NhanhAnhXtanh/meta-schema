@@ -74,6 +74,7 @@ export function Sidebar() {
     // Resizing State
     const [width, setWidth] = useState(320);
     const [isResizing, setIsResizing] = useState(false);
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
 
     const startResizing = (e: React.MouseEvent) => {
@@ -90,21 +91,45 @@ export function Sidebar() {
     };
 
     const resize = (e: MouseEvent) => {
-        if (sidebarRef.current) {
+        if (sidebarRef.current && !isCollapsed) {
             const newWidth = e.clientX - sidebarRef.current.getBoundingClientRect().left;
-            if (newWidth > 250 && newWidth < 800) {
+            if (newWidth > 280 && newWidth < 800) {
                 setWidth(newWidth);
+            } else if (newWidth <= 280) {
+                // Do not collapse automatically on resize, just stop at min width
+                setWidth(280); // Hard stop at min width
             }
         }
     };
 
+    const toggleCollapse = () => {
+        setIsCollapsed(!isCollapsed);
+    };
+
+    if (isCollapsed) {
+        return (
+            <div className="h-full bg-white border-r border-gray-200 flex flex-col items-center py-4 w-[50px] shrink-0 transition-all">
+                <button
+                    onClick={toggleCollapse}
+                    className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition-colors"
+                >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg>
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div
             ref={sidebarRef}
-            className="flex flex-col h-full bg-white border-r border-gray-200 flex-shrink-0 relative group"
+            className="flex flex-col h-full bg-white border-r border-gray-200 flex-shrink-0 relative group transition-[width] duration-0 ease-linear"
             style={{ width: `${width}px` }}
         >
-            <SidebarHeader searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+            <SidebarHeader
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                onCollapse={toggleCollapse}
+            />
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
                 {filteredNodes.map(node => (
                     <SidebarItem
@@ -129,7 +154,7 @@ export function Sidebar() {
 
             {/* Resize Handle */}
             <div
-                className={`absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors z-50 ${isResizing ? 'bg-blue-500' : 'bg-transparent'}`}
+                className={`absolute right-0 top-0 w-1 h-full cursor-col-resize hover:bg-blue-500 transition-colors z-40 ${isResizing ? 'bg-blue-500' : 'bg-transparent'}`}
                 onMouseDown={startResizing}
             />
         </div>
