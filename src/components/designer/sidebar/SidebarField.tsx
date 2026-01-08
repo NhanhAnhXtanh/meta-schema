@@ -79,6 +79,15 @@ const SidebarFieldBase = ({
 
 
 
+    // Determine if this is a virtual array field (1-n relationship)
+    let isVirtualArray = false;
+    if (field.isVirtual) {
+        const edge = edges.find(e => e.source === nodeId && e.sourceHandle === field.name);
+        if (edge && edge.data?.relationshipType === '1-n') {
+            isVirtualArray = true;
+        }
+    }
+
 
 
     // -- Nested Field Logic --
@@ -125,9 +134,9 @@ const SidebarFieldBase = ({
                     "group/field flex items-center gap-2 px-2.5 py-2 hover:bg-gray-100 rounded-md transition-all duration-150 border border-transparent hover:border-gray-200 overflow-hidden",
                     isDragging && "opacity-50",
                     isDragOver && "border-blue-500 bg-blue-50",
-                    field.isVirtual === true
+                    (field.isVirtual === true && !isVirtualArray && field.type !== 'array' && field.type !== 'object')
                         ? "bg-amber-50 hover:bg-amber-100 border-amber-200"
-                        : "bg-gray-100 hover:bg-gray-200 border-gray-200", // Darker gray
+                        : "bg-gray-100 hover:bg-gray-200 border-gray-200", // Darker gray for standard types including array/object
                     isReadOnly && "cursor-default hover:bg-transparent pl-1"
                 )}
             >
@@ -205,15 +214,17 @@ const SidebarFieldBase = ({
                     {/* 1. TYPE INDICATOR */}
                     <div className={cn(
                         "text-[9px] font-bold font-mono px-1.5 py-0.5 rounded border uppercase tracking-wider shrink-0",
-                        field.isVirtual
-                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                        isVirtualArray
+                            ? "bg-orange-100 text-orange-700 border-orange-200"
                             : field.type === 'array'
                                 ? "bg-orange-100 text-orange-700 border-orange-200"
-                                : (field.type === 'object' || field.type === 'jsonb')
+                                : field.type === 'object' || field.type === 'jsonb'
                                     ? "bg-violet-100 text-violet-700 border-violet-200"
-                                    : "bg-gray-50 text-gray-500 border-gray-200"
+                                    : field.isVirtual
+                                        ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                        : "bg-gray-50 text-gray-500 border-gray-200"
                     )}>
-                        {field.isVirtual ? 'Virtual' : field.type}
+                        {isVirtualArray ? 'Array' : (field.type === 'array' ? 'Array' : (field.type === 'object' || field.type === 'jsonb' ? 'Object' : (field.isVirtual ? 'Virtual' : field.type)))}
                     </div>
 
                     {/* 2. REF STATUS */}

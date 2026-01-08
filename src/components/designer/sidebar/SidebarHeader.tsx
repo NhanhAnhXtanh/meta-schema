@@ -113,7 +113,7 @@ export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: Sideb
                                 size="icon"
                                 className="h-7 w-7 text-gray-500 hover:text-gray-900"
                                 onClick={onCollapse}
-                                title="Thu gọn"
+                                title="Shrink"
                             >
                                 <ChevronLeft className="w-4 h-4" />
                             </Button>
