@@ -7,6 +7,7 @@ import { setAddTableDialogOpen } from '@/store/slices/uiSlice';
 import { setNodes } from '@/store/slices/schemaSlice';
 import { performAutoLayout } from '@/utils/autoLayout';
 import { ActionCreators } from 'redux-undo';
+import { ExportSchemaButton } from '../ExportSchemaButton';
 
 interface SidebarHeaderProps {
     searchQuery: string;
@@ -129,6 +130,11 @@ export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: Sideb
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-8 h-8 text-xs bg-gray-50 border-gray-200 text-gray-900 focus:bg-white placeholder:text-gray-500"
                 />
+            </div>
+
+            {/* Export Schema Button */}
+            <div className="pt-2">
+                <ExportSchemaButton />
             </div>
         </div>
     );
