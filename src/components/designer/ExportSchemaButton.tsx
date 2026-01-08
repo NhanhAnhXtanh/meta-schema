@@ -10,21 +10,50 @@ import {
     DialogDescription,
 } from '@/components/ui/dialog';
 import { generateSchema } from '@/utils/schemaGenerator';
+import { generateSampleDataWithComments } from '@/utils/sampleDataGenerator';
+import { generatePostgreSQLSchema, generateMySQLSchema } from '@/utils/sqlGenerator';
+
+type ExportFormat = 'sample' | 'schema' | 'postgresql' | 'mysql';
 
 export function ExportSchemaButton() {
     const [showPreview, setShowPreview] = useState(false);
+    const [format, setFormat] = useState<ExportFormat>('sample');
     const nodes = useAppSelector(state => state.schema.present.nodes);
     const edges = useAppSelector(state => state.schema.present.edges);
 
-    const schema = generateSchema(nodes, edges);
-    const schemaJson = JSON.stringify(schema, null, 2);
+    const getContent = () => {
+        if (format === 'sample') {
+            return generateSampleDataWithComments(nodes, edges);
+        } else if (format === 'postgresql') {
+            return generatePostgreSQLSchema(nodes, edges);
+        } else if (format === 'mysql') {
+            return generateMySQLSchema(nodes, edges);
+        } else {
+            const schema = generateSchema(nodes, edges);
+            return JSON.stringify(schema, null, 2);
+        }
+    };
+
+    const content = getContent();
 
     const handleDownload = () => {
-        const blob = new Blob([schemaJson], { type: 'application/json' });
+        const extension = format === 'sample' ? '.js' :
+            format === 'postgresql' || format === 'mysql' ? '.sql' :
+                '.json';
+        const filename = format === 'sample' ? 'sample-data' :
+            format === 'postgresql' ? 'schema-postgresql' :
+                format === 'mysql' ? 'schema-mysql' :
+                    'schema';
+
+        const blob = new Blob([content], {
+            type: format === 'sample' ? 'text/javascript' :
+                format === 'postgresql' || format === 'mysql' ? 'text/plain' :
+                    'application/json'
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `schema.json`;
+        a.download = filename + extension;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -32,8 +61,8 @@ export function ExportSchemaButton() {
     };
 
     const handleCopyToClipboard = () => {
-        navigator.clipboard.writeText(schemaJson);
-        alert('Schema copied to clipboard!');
+        navigator.clipboard.writeText(content);
+        alert('Copied to clipboard!');
     };
 
     return (
@@ -50,14 +79,50 @@ export function ExportSchemaButton() {
             <Dialog open={showPreview} onOpenChange={setShowPreview}>
                 <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
                     <DialogHeader>
-                        <DialogTitle>Schema Preview</DialogTitle>
+                        <DialogTitle>Export Schema</DialogTitle>
                         <DialogDescription>
-                            Preview and export your schema
+                            Choose format and export your schema
                         </DialogDescription>
                     </DialogHeader>
 
+                    {/* Format Selector */}
+                    <div className="flex gap-2 pb-3 border-b flex-wrap">
+                        <Button
+                            variant={format === 'sample' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setFormat('sample')}
+                            className={format === 'sample' ? 'bg-green-600 hover:bg-green-700' : ''}
+                        >
+                            Sample Data
+                        </Button>
+                        <Button
+                            variant={format === 'postgresql' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setFormat('postgresql')}
+                            className={format === 'postgresql' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                        >
+                            PostgreSQL
+                        </Button>
+                        <Button
+                            variant={format === 'mysql' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setFormat('mysql')}
+                            className={format === 'mysql' ? 'bg-orange-600 hover:bg-orange-700' : ''}
+                        >
+                            MySQL
+                        </Button>
+                        <Button
+                            variant={format === 'schema' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setFormat('schema')}
+                            className={format === 'schema' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+                        >
+                            Schema JSON
+                        </Button>
+                    </div>
+
                     <div className="flex-1 overflow-auto bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-xs">
-                        <pre>{schemaJson}</pre>
+                        <pre>{content}</pre>
                     </div>
 
                     <div className="flex gap-2 justify-end pt-4 border-t">
@@ -72,7 +137,7 @@ export function ExportSchemaButton() {
                             className="bg-green-600 hover:bg-green-700"
                         >
                             <Download className="w-4 h-4 mr-2" />
-                            Download JSON
+                            Download
                         </Button>
                     </div>
                 </DialogContent>

@@ -7,7 +7,6 @@ import { setAddTableDialogOpen } from '@/store/slices/uiSlice';
 import { setNodes } from '@/store/slices/schemaSlice';
 import { performAutoLayout } from '@/utils/autoLayout';
 import { ActionCreators } from 'redux-undo';
-import { ExportSchemaButton } from '../ExportSchemaButton';
 
 interface SidebarHeaderProps {
     searchQuery: string;
@@ -100,7 +99,7 @@ export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: Sideb
                         size="icon"
                         onClick={() => dispatch(setAddTableDialogOpen(true))}
                         className="h-7 w-7 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                        title="Add Table"
+                        title="Manage Schema"
                     >
                         <Plus className="w-4 h-4" />
                     </Button>
@@ -132,10 +131,7 @@ export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: Sideb
                 />
             </div>
 
-            {/* Export Schema Button */}
-            <div className="pt-2">
-                <ExportSchemaButton />
-            </div>
+            {/* Export/Import Moved to Manage Schema Dialog */}
         </div>
     );
 }
