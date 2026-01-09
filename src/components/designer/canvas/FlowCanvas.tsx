@@ -8,6 +8,9 @@ import {
     EdgeTypes,
     useUpdateNodeInternals,
     useNodes,
+    Connection,
+    OnNodesDelete,
+    Edge,
 } from '@xyflow/react';
 import { CanvasVisualHandler } from '@/components/designer/canvas/CanvasVisualHandler';
 import '@xyflow/react/dist/style.css';
@@ -15,18 +18,23 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { onNodesChange, onEdgesChange, onConnect } from '@/store/slices/schemaSlice';
 import { TableNodeData } from '@/types/schema';
-import { TableNode } from '@/components/TableNode';
+import { TableNode } from '@/components/designer/canvas/nodes/TableNode';
 import { RelationshipEdge } from '@/components/RelationshipEdge';
 import { openLinkFieldDialogWithValues } from '@/store/slices/uiSlice';
 import { SchemaEvents } from '@/events/schemaEvents';
 import { schemaEventBus } from '@/events/eventBus';
 
 const nodeTypes: NodeTypes = {
-    table: TableNode as any,
+    table: TableNode,
 };
 
 const edgeTypes: EdgeTypes = {
     relationship: RelationshipEdge,
+};
+
+const defaultEdgeOptions: Omit<Edge, 'id' | 'source' | 'target'> = {
+    type: 'relationship',
+    animated: true,
 };
 
 // Component to update node internals - must be inside ReactFlow
@@ -35,7 +43,11 @@ function NodeUpdater() {
     const updateNodeInternals = useUpdateNodeInternals();
     const nodes = useNodes();
 
-    const nodesVersion = nodes.reduce((sum, node) => sum + ((node.data as TableNodeData)._version || 0), 0);
+    // Calculate a hash/sum of versions to trigger effect efficiently
+    const nodesVersion = useMemo(() =>
+        nodes.reduce((sum, node) => sum + ((node.data as TableNodeData)._version || 0), 0),
+        [nodes]
+    );
 
     useEffect(() => {
         // Only update nodes that have _version (recently modified)
@@ -43,7 +55,7 @@ function NodeUpdater() {
         nodesToUpdate.forEach(node => {
             updateNodeInternals(node.id);
         });
-    }, [nodesVersion, updateNodeInternals]);
+    }, [nodesVersion, updateNodeInternals]); // Dependent on computed version
 
     return null;
 }
@@ -54,23 +66,33 @@ export function FlowCanvas() {
     const edges = useSelector((state: RootState) => state.schema.present.edges);
 
     // Filter nodes based on isActive property
+    // We use useMemo to ensure referential stability for ReactFlow
     const visibleNodes = useMemo(() => {
-        return nodes.filter(node => node.data?.isActive !== false); // Default to true if undefined
+        return nodes.filter(node => node.data?.isActive !== false);
     }, [nodes]);
 
-    // Custom onNodesChange to intercept deletions
+    // Optimize: Handle Node Changes (Position, Selection from React Flow)
     const onNodesChangeHandler = useCallback((changes: any[]) => {
-        const changesToApply = changes.filter(c => c.type !== 'remove');
-        if (changesToApply.length > 0) {
-            dispatch(onNodesChange(changesToApply));
+        // We only care about position/selection changes here.
+        // Removals are handled by onNodesDelete for cleaner separation.
+        const relevantChanges = changes.filter(c => c.type !== 'remove');
+        if (relevantChanges.length > 0) {
+            dispatch(onNodesChange(relevantChanges));
         }
-
-        // Handle removals via Event Bus to trigger Cascade Deletion
-        const removals = changes.filter(c => c.type === 'remove');
-        removals.forEach(c => {
-            schemaEventBus.emit(SchemaEvents.TABLE_DELETE, { id: c.id });
-        });
     }, [dispatch]);
+
+    // Optimize: Handle Node Deletions (Native Handler)
+    const onNodesDelete: OnNodesDelete = useCallback((deletedNodes) => {
+        deletedNodes.forEach(node => {
+            schemaEventBus.emit(SchemaEvents.TABLE_DELETE, { id: node.id });
+        });
+    }, []);
+
+    // Optimize: Connection Validation
+    const isValidConnection = useCallback((connection: Connection) => {
+        // Prevent self-connections
+        return connection.source !== connection.target;
+    }, []);
 
     // Custom onConnect to open Link Dialog
     const onConnectHandler = useCallback((connection: any) => {
@@ -82,17 +104,12 @@ export function FlowCanvas() {
                     targetNodeId: target,
                     sourceKey: sourceHandle,
                     targetKey: targetHandle,
-                    // Default guess, can be changed in dialog
                     linkType: '1-n',
                     fieldName: ''
                 }
             }));
         }
     }, [dispatch]);
-
-    const isValidConnection = useCallback((connection: any) => {
-        return connection.source !== connection.target;
-    }, []);
 
     return (
         <div className="flex-1 h-full w-full">
@@ -101,23 +118,28 @@ export function FlowCanvas() {
                 edges={edges}
                 onNodesChange={onNodesChangeHandler}
                 onEdgesChange={(changes) => dispatch(onEdgesChange(changes))}
+                onNodesDelete={onNodesDelete}
                 onConnect={onConnectHandler}
                 isValidConnection={isValidConnection}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
+                defaultEdgeOptions={defaultEdgeOptions}
                 fitView
                 className="bg-gray-50"
+                minZoom={0.1}
+                maxZoom={4}
+                snapToGrid={true}
+                snapGrid={[16, 16]}
+                proOptions={{ hideAttribution: true }} // Valid for Pro or non-commercial if allowed, cleans UI
             >
                 <CanvasVisualHandler />
                 <NodeUpdater />
                 <Background color="#ccc" gap={16} />
                 <Controls className="bg-white text-black border-gray-200 shadow-sm" />
                 <MiniMap
-                    nodeColor={(node) => {
-                        return (node.data as any).color || '#ccc';
-                    }}
+                    nodeColor={(node) => (node.data as any).color || '#ccc'}
                     maskColor="rgba(240, 240, 240, 0.6)"
-                    className="bg-white border border-gray-200"
+                    className="bg-white border border-gray-200 rounded shadow-md"
                 />
             </ReactFlow>
         </div>

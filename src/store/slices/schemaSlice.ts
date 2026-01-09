@@ -2,6 +2,12 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Node, Edge, Connection, applyNodeChanges, applyEdgeChanges, NodeChange, EdgeChange } from '@xyflow/react';
 import { TableNodeData, TableColumn } from '@/types/schema';
 import { TABLE_COLORS } from '@/constants';
+import {
+    removeTableAndDescendants,
+    deleteFieldAndCleanEdges,
+    updateFieldCascading,
+    toggleFieldVisibilityCascading
+} from '../utils/schemaHelpers';
 
 export interface SchemaState {
     nodes: Node<TableNodeData>[];
@@ -136,29 +142,10 @@ const schemaSlice = createSlice({
         },
         deleteTable: (state, action: PayloadAction<string>) => {
             const rootId = action.payload;
-            const idsToDelete = new Set<string>();
-            const queue = [rootId];
+            const idsToDelete = removeTableAndDescendants(state.nodes, state.edges, rootId);
 
-            // 1. BFS to find all descendants
-            while (queue.length > 0) {
-                const currentId = queue.shift()!;
-                if (!idsToDelete.has(currentId)) {
-                    idsToDelete.add(currentId);
-
-                    // Find all OUTGOING edges from this node (Source -> Target)
-                    // This implies "Children" or "Dependents"
-                    const outgoingEdges = state.edges.filter(e => e.source === currentId);
-
-                    outgoingEdges.forEach(edge => {
-                        queue.push(edge.target);
-                    });
-                }
-            }
-
-            // 2. Remove all identified nodes
+            // Apply deletions based on IDs identified by helper
             state.nodes = state.nodes.filter(n => !idsToDelete.has(n.id));
-
-            // 3. Remove all edges connected to deleted nodes (either source or target)
             state.edges = state.edges.filter(e => !idsToDelete.has(e.source) && !idsToDelete.has(e.target));
         },
 
@@ -172,157 +159,17 @@ const schemaSlice = createSlice({
         },
         updateField: (state, action: PayloadAction<{ nodeId: string; fieldIndex: number; updates: Partial<TableColumn> }>) => {
             const { nodeId, fieldIndex, updates } = action.payload;
-            const node = state.nodes.find(n => n.id === nodeId);
-            if (node && node.data.columns[fieldIndex]) {
-                const oldField = node.data.columns[fieldIndex];
-                const oldName = oldField.name;
-
-                // Update the field
-                node.data.columns[fieldIndex] = { ...oldField, ...updates };
-                node.data._version = Date.now();
-
-                // If name changed, update edges that reference this field
-                if (updates.name && updates.name !== oldName) {
-                    const newName = updates.name;
-
-                    // Update edges where this field is the source handle (1-n array fields)
-                    state.edges.forEach(edge => {
-                        // 1. Array/Link (1-n): Source Handle matches field name
-                        if (edge.source === nodeId && edge.sourceHandle === oldName) {
-                            edge.sourceHandle = newName;
-                        }
-                        // 2. Target Handle matches field name
-                        if (edge.target === nodeId && edge.targetHandle === oldName) {
-                            edge.targetHandle = newName;
-                        }
-                        // 3. Object (n-1): stored in data.objectFieldName
-                        if (edge.source === nodeId && edge.data?.objectFieldName === oldName) {
-                            edge.data.objectFieldName = newName;
-                            // Also update sourceHandle if it matches (it usually does for n-1)
-                            if (edge.sourceHandle === oldName) {
-                                edge.sourceHandle = newName;
-                            }
-                        }
-                    });
-                }
-            }
+            updateFieldCascading(state.nodes, state.edges, nodeId, fieldIndex, updates);
         },
         toggleFieldVisibility: (state, action: PayloadAction<{ nodeId: string; fieldIndex: number }>) => {
             const { nodeId, fieldIndex } = action.payload;
-            const node = state.nodes.find(n => n.id === nodeId);
-            if (!node) return;
-
-            const field = node.data.columns[fieldIndex];
-            const newVisibility = field.visible === false;
-
-            // Update current field
-            field.visible = newVisibility;
-
-            // Cascading visibility for FK
-            if (field.isForeignKey) {
-                // Find connected edges (FK -> Object Field)
-                const connectedEdges = state.edges.filter(
-                    edge =>
-                        edge.source === nodeId &&
-                        edge.sourceHandle === field.name &&
-                        edge.data?.objectFieldName
-                );
-
-                connectedEdges.forEach(edge => {
-                    const targetNode = state.nodes.find(n => n.id === edge.target);
-                    if (targetNode) {
-                        const objectColumn = targetNode.data.columns.find(
-                            c => c.name === edge.data?.objectFieldName && c.type === 'object'
-                        );
-                        if (objectColumn) {
-                            objectColumn.visible = newVisibility;
-                        }
-                    }
-                });
-            }
+            toggleFieldVisibilityCascading(state.nodes, state.edges, nodeId, fieldIndex);
         },
         deleteField: (state, action: PayloadAction<{ nodeId: string; fieldIndex: number; skipRecursive?: boolean }>) => {
             const { nodeId, fieldIndex, skipRecursive } = action.payload;
-            const node = state.nodes.find(n => n.id === nodeId);
-            if (node) {
-                const field = node.data.columns[fieldIndex];
-
-                // Identify edges connecting to this field (outgoing/downstream to children)
-                const edgesToDelete = state.edges.filter(e =>
-                    (e.source === nodeId && e.sourceHandle === field.name) || // 1-n array/link
-                    (e.source === nodeId && e.data?.objectFieldName === field.name) // n-1 object link
-                );
-
-                const childNodeIds = edgesToDelete.map(e => e.target);
-
-                // Collect potential FKs to cleanup
-                const potentialFKsToCleanup: { nodeId: string, fieldName: string }[] = [];
-                edgesToDelete.forEach(e => {
-                    if (e.data?.relationshipType === '1-n') {
-                        // FK is on target
-                        if (e.target && e.targetHandle) {
-                            potentialFKsToCleanup.push({ nodeId: e.target, fieldName: e.targetHandle });
-                        }
-                    } else {
-                        // n-1 or 1-1, FK is on source
-                        if (e.source && e.data?.sourceFK) {
-                            potentialFKsToCleanup.push({ nodeId: e.source, fieldName: e.data.sourceFK as string });
-                        }
-                    }
-                });
-
-                // Remove edges
-                const edgeIdsToDelete = new Set(edgesToDelete.map(e => e.id));
-                state.edges = state.edges.filter(e => !edgeIdsToDelete.has(e.id));
-
-                // Cleanup FK status if no longer used
-                potentialFKsToCleanup.forEach(({ nodeId, fieldName }) => {
-                    const isUsed = state.edges.some(e => {
-                        if (e.data?.relationshipType === '1-n') {
-                            return e.target === nodeId && e.targetHandle === fieldName;
-                        } else {
-                            return e.source === nodeId && e.data?.sourceFK === fieldName;
-                        }
-                    });
-
-                    if (!isUsed) {
-                        const targetNode = state.nodes.find(n => n.id === nodeId);
-                        if (targetNode) {
-                            const col = targetNode.data.columns.find(c => c.name === fieldName);
-                            if (col) {
-                                col.isForeignKey = false;
-                            }
-                        }
-                    }
-                });
-
-                // Remove the field
-                node.data.columns.splice(fieldIndex, 1);
-
-                // Only recursive delete if not skipped (e.g. during Edit)
-                if (!skipRecursive) {
-                    // Recursive delete helper
-                    const recursiveDelete = (id: string) => {
-                        // If node already deleted, skip
-                        if (!state.nodes.find(n => n.id === id)) return;
-
-                        // Find children of this node
-                        const outgoingEdges = state.edges.filter(e => e.source === id);
-                        const children = outgoingEdges.map(e => e.target);
-
-                        // Delete node and its edges
-                        state.nodes = state.nodes.filter(n => n.id !== id);
-                        state.edges = state.edges.filter(e => e.source !== id && e.target !== id);
-
-                        // Recurse
-                        children.forEach(childId => recursiveDelete(childId));
-                    };
-
-                    // Execute recursive delete for all children connected to this field
-                    childNodeIds.forEach(id => recursiveDelete(id));
-                }
-            }
+            deleteFieldAndCleanEdges(state.nodes, state.edges, nodeId, fieldIndex, skipRecursive);
         },
+
         reorderFields: (state, action: PayloadAction<{ nodeId: string; oldIndex: number; newIndex: number }>) => {
             const { nodeId, oldIndex, newIndex } = action.payload;
 

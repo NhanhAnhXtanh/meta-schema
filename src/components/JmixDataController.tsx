@@ -3,8 +3,7 @@ import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { schemaEventBus } from '@/events/eventBus';
 import { SchemaEvents, TableAddPayload, TableUpdatePayload, TableDeletePayload, FieldAddPayload, FieldUpdatePayload, FieldDeletePayload, FieldReorderPayload, FieldToggleVisibilityPayload, RelationshipAddPayload } from '@/events/schemaEvents';
-import { addTable, updateTable, addField, updateField, deleteField, reorderFields, toggleFieldVisibility, setNodes } from '@/store/slices/schemaSlice';
-import { deleteTableCascade, deleteFieldCascade } from '@/store/thunks/schemaThunks';
+import { addTable, updateTable, deleteTable, addField, updateField, deleteField, reorderFields, toggleFieldVisibility, setNodes } from '@/store/slices/schemaSlice';
 import { confirmLinkField, confirmLinkObject } from '@/store/slices/schemaSlice';
 import { performAutoLayout } from '@/utils/autoLayout';
 import { ActionCreators } from 'redux-undo';
@@ -33,7 +32,8 @@ export function JmixDataController() {
         };
 
         const handleTableDelete = (payload: TableDeletePayload) => {
-            dispatch(deleteTableCascade(payload.id));
+            // Use reducer action which now handles cascading via helper
+            dispatch(deleteTable(payload.id));
         };
 
         const handleFieldAdd = (payload: FieldAddPayload) => {
@@ -45,7 +45,8 @@ export function JmixDataController() {
         };
 
         const handleFieldDelete = (payload: FieldDeletePayload) => {
-            dispatch(deleteFieldCascade(payload.nodeId, payload.fieldIndex));
+            // Use reducer action which now handles cascading via helper
+            dispatch(deleteField({ nodeId: payload.nodeId, fieldIndex: payload.fieldIndex }));
         };
 
         const handleFieldReorder = (payload: FieldReorderPayload) => {

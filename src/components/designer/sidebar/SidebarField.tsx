@@ -5,8 +5,6 @@ import { cn } from '@/lib/utils';
 import { TableColumn } from '@/types/schema';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store';
-import { updateField, toggleFieldVisibility } from '@/store/slices/schemaSlice';
-import { deleteFieldCascade } from '@/store/thunks/schemaThunks';
 import { openEditLinkFieldDialog } from '@/store/slices/uiSlice';
 import { NestedFieldsList } from './NestedFieldsList';
 import { schemaEventBus } from '@/events/eventBus';
@@ -40,8 +38,6 @@ interface SidebarFieldProps {
     isReadOnly?: boolean;
 }
 
-
-
 const SidebarFieldBase = ({
     nodeId, field, index,
     onDragStart, onDragOver, onDrop,
@@ -66,12 +62,17 @@ const SidebarFieldBase = ({
         if (isReadOnly) return; // Skip updates if readonly
         const timer = setTimeout(() => {
             if (localName !== (field.name || '') && (field.isVirtual === true || field.type === 'object' || field.type === 'array')) {
-                dispatch(updateField({ nodeId, fieldIndex: index, updates: { name: localName } }));
+                // Event-Driven: Emit field update event
+                schemaEventBus.emit(SchemaEvents.FIELD_UPDATE, {
+                    nodeId,
+                    fieldIndex: index,
+                    updates: { name: localName }
+                });
             }
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [localName, nodeId, index, dispatch, field.name, field.isVirtual, field.type, isReadOnly]);
+    }, [localName, nodeId, index, field.name, field.isVirtual, field.type, isReadOnly]);
 
 
     const edges = useSelector((state: RootState) => state.schema.present.edges);
@@ -87,8 +88,6 @@ const SidebarFieldBase = ({
         }
     }
 
-
-
     // Determine if this is a virtual array field (1-n relationship)
     let isVirtualArray = false;
     if (field.isVirtual) {
@@ -97,8 +96,6 @@ const SidebarFieldBase = ({
             isVirtualArray = true;
         }
     }
-
-
 
     // -- Nested Field Logic --
     const [isExpanded, setIsExpanded] = useState(false);
@@ -166,7 +163,7 @@ const SidebarFieldBase = ({
                     <input
                         type="checkbox"
                         checked={field.visible !== false}
-                        onChange={() => dispatch(toggleFieldVisibility({ nodeId, fieldIndex: index }))}
+                        onChange={() => schemaEventBus.emit(SchemaEvents.FIELD_TOGGLE_VISIBILITY, { nodeId, fieldIndex: index })}
                         className="w-4 h-4 cursor-pointer accent-blue-600"
                     />
                 )}
@@ -202,7 +199,7 @@ const SidebarFieldBase = ({
                                     onChange={() => {
                                         schemaEventBus.emit(SchemaEvents.TABLE_TOGGLE_VISIBILITY, {
                                             id: targetNode.id,
-                                            isVisible: !isTargetVisible
+                                            isVisible: !isTargetVisible // should be handled by listener payload? the event usually takes just ID if it's a toggle, or payload has explicit value
                                         });
                                     }}
                                     className="w-3 h-3 cursor-pointer accent-blue-600 flex-shrink-0"
@@ -273,7 +270,7 @@ const SidebarFieldBase = ({
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }))}>
+                            <DropdownMenuItem onClick={() => schemaEventBus.emit(SchemaEvents.FIELD_UPDATE, { nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } })}>
                                 <div className="flex items-center gap-2 w-full">
                                     <div className={cn("w-4 h-4 flex items-center justify-center rounded text-[8px] font-bold border",
                                         field.isPrimaryKey ? "bg-yellow-100 border-yellow-300 text-yellow-700" : "bg-gray-50 border-gray-200 text-gray-400")}>PK</div>
@@ -281,7 +278,7 @@ const SidebarFieldBase = ({
                                     {field.isPrimaryKey && <Check className="w-3 h-3 ml-auto text-blue-600" />}
                                 </div>
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }))}>
+                            <DropdownMenuItem onClick={() => schemaEventBus.emit(SchemaEvents.FIELD_UPDATE, { nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } })}>
                                 <div className="flex items-center gap-2 w-full">
                                     <div className={cn("w-4 h-4 flex items-center justify-center rounded text-[8px] font-bold border",
                                         field.isForeignKey ? "bg-sky-100 border-sky-300 text-sky-700" : "bg-gray-50 border-gray-200 text-gray-400")}>FK</div>
@@ -393,7 +390,8 @@ const SidebarFieldBase = ({
                         </button>
                         <button
                             onClick={() => {
-                                dispatch(deleteFieldCascade(nodeId, index));
+                                // Event-Driven Delete
+                                schemaEventBus.emit(SchemaEvents.FIELD_DELETE, { nodeId, fieldIndex: index });
                                 setShowDeleteDialog(false);
                             }}
                             className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

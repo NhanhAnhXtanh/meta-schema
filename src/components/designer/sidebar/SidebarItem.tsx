@@ -4,21 +4,15 @@ import { ChevronDown, ChevronRight, Edit2, GripVertical, MoreVertical, Trash2, P
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableNodeData } from '@/types/schema';
-import { useDispatch, useSelector } from 'react-redux';
-import { AppDispatch, RootState } from '@/store';
-import { updateTable, reorderFields } from '@/store/slices/schemaSlice';
-import { deleteTableCascade } from '@/store/thunks/schemaThunks';
-import { openLinkFieldDialog } from '@/store/slices/uiSlice';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
 import { SidebarField } from './SidebarField';
-import { schemaEventBus } from '@/events/eventBus';
-import { SchemaEvents } from '@/events/schemaEvents';
+import { useSidebarItem } from './useSidebarItem';
 import {
     setEditingNodeId,
     setEditName,
     setMenuOpenNodeId,
     setDeleteDialogNodeId,
-    setSidebarFieldDragState,
-    setSidebarFieldDragOverIndex
 } from '@/store/slices/sidebarSlice';
 
 import {
@@ -49,59 +43,23 @@ const SidebarItemBase = ({
 }: SidebarItemProps) => {
     const dispatch = useDispatch<AppDispatch>();
 
-    // UI State from Redux
     const {
-        editingNodeId,
-        editName: globalEditName,
-        menuOpenNodeId,
-        deleteDialogNodeId,
-        draggedFieldNodeId,
+        isEditing,
+        currentEditName,
+        isMenuOpen,
+        showDeleteDialog,
         draggedFieldIndex,
-        dragOverFieldIndex
-    } = useSelector((state: RootState) => state.sidebar);
-
-    const isEditing = editingNodeId === node.id;
-    const currentEditName = isEditing ? globalEditName : node.data.label;
-    const menuOpen = menuOpenNodeId === node.id;
-    const showDeleteDialog = deleteDialogNodeId === node.id;
-
-    // Field dragging state for THIS node
-    const isThisNodeFieldDragging = draggedFieldNodeId === node.id;
-
-    const handleSaveEdit = () => {
-        if (currentEditName.trim()) {
-            dispatch(updateTable({ id: node.id, updates: { label: currentEditName.trim() } }));
-            dispatch(setEditingNodeId(null));
-        }
-    };
-
-    const handleFieldDragStart = (e: React.DragEvent, index: number) => {
-        dispatch(setSidebarFieldDragState({ nodeId: node.id, index }));
-        e.dataTransfer.effectAllowed = 'move';
-        e.stopPropagation(); // Stop parent node drag
-    };
-
-    const handleFieldDragOver = (e: React.DragEvent, index: number) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isThisNodeFieldDragging && draggedFieldIndex !== index) {
-            dispatch(setSidebarFieldDragOverIndex(index));
-        }
-    };
-
-    const handleFieldDrop = (e: React.DragEvent, index: number) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isThisNodeFieldDragging && draggedFieldIndex !== null && draggedFieldIndex !== index) {
-            dispatch(reorderFields({ nodeId: node.id, oldIndex: draggedFieldIndex, newIndex: index }));
-        }
-        dispatch(setSidebarFieldDragState({ nodeId: null, index: null }));
-        dispatch(setSidebarFieldDragOverIndex(null));
-    };
-
-    const handleAddField = () => {
-        dispatch(openLinkFieldDialog(node.id));
-    };
+        dragOverFieldIndex,
+        isThisNodeFieldDragging,
+        handleSaveEdit,
+        handleFieldDragStart,
+        handleFieldDragOver,
+        handleFieldDrop,
+        handleAddField,
+        handleFocusNode,
+        handleToggleMenu,
+        handleConfirmDelete
+    } = useSidebarItem(node, isExpanded, onToggleExpand);
 
     // Helper to close menu
     const closeMenu = () => dispatch(setMenuOpenNodeId(null));
@@ -141,9 +99,7 @@ const SidebarItemBase = ({
 
                     <GripVertical className="w-4 h-4 text-gray-400 mr-2 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                    <div className="flex-1 cursor-pointer py-3 min-w-0" onClick={() => {
-                        schemaEventBus.emit(SchemaEvents.TABLE_FOCUS, { nodeId: node.id });
-                    }}>
+                    <div className="flex-1 cursor-pointer py-3 min-w-0" onClick={handleFocusNode}>
                         {isEditing ? (
                             <Input
                                 value={currentEditName}
@@ -170,10 +126,10 @@ const SidebarItemBase = ({
 
                     {/* Menu */}
                     <div className="relative">
-                        <button onClick={() => dispatch(setMenuOpenNodeId(menuOpen ? null : node.id))} className="p-2 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-all">
+                        <button onClick={handleToggleMenu} className="p-2 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-all">
                             <MoreVertical className="w-4 h-4 text-gray-500" />
                         </button>
-                        {menuOpen && (
+                        {isMenuOpen && (
                             <>
                                 <div className="fixed inset-0 z-10" onClick={closeMenu} />
                                 <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-md shadow-lg min-w-[140px]">
@@ -245,10 +201,7 @@ const SidebarItemBase = ({
                             Hủy bỏ
                         </button>
                         <button
-                            onClick={() => {
-                                dispatch(deleteTableCascade(node.id));
-                                dispatch(setDeleteDialogNodeId(null));
-                            }}
+                            onClick={handleConfirmDelete}
                             className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >
                             Xác nhận Xóa

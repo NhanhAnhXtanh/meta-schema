@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import { THEME } from '@/constants/theme';
 import { useDispatch } from 'react-redux';
 import { confirmLinkField, confirmLinkObject, deleteField } from '@/store/slices/schemaSlice';
+import { SchemaEvents } from '@/events/schemaEvents';
+import { schemaEventBus } from '@/events/eventBus';
 
 export type RelationshipType = '1-1' | '1-n' | 'n-1';
 export type EdgePathType = 'bezier' | 'smoothstep' | 'straight';
@@ -65,6 +67,7 @@ export function RelationshipEdge({
   const [isHovered, setIsHovered] = useState(false);
   const [pathType, setPathType] = useState<EdgePathType>(data?.pathType || 'bezier');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
   const [isVirtual, setIsVirtual] = useState(data?.relationshipType === '1-n');
 
   const validationErrorMemo = useMemo(() => {
@@ -274,8 +277,21 @@ export function RelationshipEdge({
   };
 
   const handleDeleteEdge = () => {
-    // Only delete the edge, keep fields intact so they can be re-linked
-    deleteElements({ edges: [{ id }] });
+    // Open confirmation alert instead of deleting immediately
+    setShowDeleteAlert(true);
+  };
+
+  const confirmDelete = () => {
+    // Delete target table and all its descendants
+    // This will also automatically remove this edge
+    import('@/events/eventBus').then(({ schemaEventBus }) => {
+      import('@/events/schemaEvents').then(({ SchemaEvents }) => {
+        schemaEventBus.emit(SchemaEvents.TABLE_DELETE, { id: target });
+      });
+    });
+
+    setShowDeleteAlert(false);
+    setIsMenuOpen(false);
   };
 
 
@@ -775,9 +791,46 @@ export function RelationshipEdge({
 
             </DialogContent>
           </Dialog>
+
+          <Dialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-red-600">
+                  <Trash2 className="w-5 h-5" />
+                  Xóa quan hệ & Bảng con?
+                </DialogTitle>
+                <div className="py-2 text-sm text-gray-500">
+                  <span className="block font-medium text-gray-900 mb-2">
+                    CẢNH BÁO:
+                  </span>
+                  Bạn đang xóa quan hệ dẫn tới bảng <strong>{nodes.find(n => n.id === target)?.data.label}</strong>.
+                  <br /><br />
+                  Hành động này sẽ <strong className="text-red-600">XÓA LUÔN Bảng đích</strong> và tất cả các bảng con cháu của nó.
+                  <br />
+                  Bạn có chắc chắn không?
+                </div>
+              </DialogHeader>
+              <div className="flex justify-end gap-3 mt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteAlert(false)}
+                  className="border-gray-300"
+                >
+                  Hủy bỏ
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={confirmDelete}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Xóa tất cả
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </foreignObject>
-    </g>
+    </g >
   );
 }
 

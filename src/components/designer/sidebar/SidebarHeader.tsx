@@ -7,30 +7,30 @@ import { Button } from '@/components/ui/button';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
 import { setAddTableDialogOpen } from '@/store/slices/uiSlice';
-import { setNodes } from '@/store/slices/schemaSlice';
 import { setSidebarSearchQuery, setIsSidebarCollapsed } from '@/store/slices/sidebarSlice';
-import { performAutoLayout } from '@/utils/autoLayout';
-import { ActionCreators } from 'redux-undo';
+import { schemaEventBus } from '@/events/eventBus';
+import { SchemaEvents } from '@/events/schemaEvents';
 
 export function SidebarHeader() {
     const dispatch = useDispatch();
 
     // Data from Redux
     const searchQuery = useSelector((state: RootState) => state.sidebar.searchQuery);
-    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
 
+    // We can still read state for disabled buttons state, 
+    // but actions go through Event Bus
     const canUndo = useSelector((state: RootState) => state.schema.past.length > 0);
     const canRedo = useSelector((state: RootState) => state.schema.future.length > 0);
 
     const handleAutoLayout = () => {
-        const layoutedNodes = performAutoLayout(nodes);
-        dispatch(setNodes(layoutedNodes));
+        schemaEventBus.emit(SchemaEvents.SCHEMA_AUTO_LAYOUT);
     };
 
+    const handleUndo = () => schemaEventBus.emit(SchemaEvents.SCHEMA_UNDO);
+    const handleRedo = () => schemaEventBus.emit(SchemaEvents.SCHEMA_REDO);
+
     const handleCollapse = () => {
-        dispatch(setIsSidebarCollapsed(true)); // Collapsing from header usually implies going to collapsed state
-        // Actually, sidebarSlice has a specific toggle, but here we can just set it. 
-        // Wait, the header button is "Minimize". 
+        dispatch(setIsSidebarCollapsed(true));
     };
 
     // Keyboard Shortcuts
@@ -42,21 +42,21 @@ export function SidebarHeader() {
 
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                 if (e.shiftKey) {
-                    dispatch(ActionCreators.redo());
+                    handleRedo();
                 } else {
-                    dispatch(ActionCreators.undo());
+                    handleUndo();
                 }
                 e.preventDefault();
             }
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-                dispatch(ActionCreators.redo());
+                handleRedo();
                 e.preventDefault();
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [dispatch]);
+    }, []);
 
     return (
         <div className="p-4 border-b border-gray-200 space-y-3 bg-white sticky top-0 z-10">
@@ -72,7 +72,7 @@ export function SidebarHeader() {
                         size="icon"
                         className="h-7 w-7"
                         disabled={!canUndo}
-                        onClick={() => dispatch(ActionCreators.undo())}
+                        onClick={handleUndo}
                         title="Undo (Ctrl+Z)"
                     >
                         <Undo2 className="w-4 h-4" />
@@ -82,7 +82,7 @@ export function SidebarHeader() {
                         size="icon"
                         className="h-7 w-7"
                         disabled={!canRedo}
-                        onClick={() => dispatch(ActionCreators.redo())}
+                        onClick={handleRedo}
                         title="Redo (Ctrl+Y)"
                     >
                         <Redo2 className="w-4 h-4" />
