@@ -1,25 +1,27 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { Upload, FileJson } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { importSchema } from '@/utils/schemaImporter';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
+import { setJsonImportFileName, setJsonImportPreviewData, setJsonImportError, resetJsonImportState } from '@/store/slices/jsonImportSlice';
 
 interface JsonImportModeProps {
     onImport: (nodes: any[], edges: any[]) => void;
 }
 
 export function JsonImportMode({ onImport }: JsonImportModeProps) {
+    const dispatch = useDispatch();
+    const { fileName, previewData, error } = useSelector((state: RootState) => state.jsonImport);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [fileName, setFileName] = useState<string>('');
-    const [previewData, setPreviewData] = useState<any>(null);
-    const [error, setError] = useState<string>('');
 
     const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        setFileName(file.name);
-        setError('');
-        setPreviewData(null);
+        dispatch(setJsonImportFileName(file.name));
+        dispatch(setJsonImportError(''));
+        dispatch(setJsonImportPreviewData(null));
 
         try {
             const text = await file.text();
@@ -28,17 +30,17 @@ export function JsonImportMode({ onImport }: JsonImportModeProps) {
             const { nodes, edges } = importSchema(jsonData);
 
             if (nodes.length === 0) {
-                setError('Không tìm thấy bảng nào trong file JSON!');
+                dispatch(setJsonImportError('Không tìm thấy bảng nào trong file JSON!'));
                 return;
             }
 
-            setPreviewData({
+            dispatch(setJsonImportPreviewData({
                 nodes,
                 edges,
                 collections: jsonData.collections || []
-            });
+            }));
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Lỗi khi đọc file JSON');
+            dispatch(setJsonImportError(err instanceof Error ? err.message : 'Lỗi khi đọc file JSON'));
             console.error('[JSON Import]', err);
         }
     };
@@ -46,7 +48,13 @@ export function JsonImportMode({ onImport }: JsonImportModeProps) {
     const handleImport = () => {
         if (previewData) {
             onImport(previewData.nodes, previewData.edges);
+            // Optionally reset after success
+            dispatch(resetJsonImportState());
         }
+    };
+
+    const handleCancel = () => {
+        dispatch(resetJsonImportState());
     };
 
     return (
@@ -208,11 +216,7 @@ export function JsonImportMode({ onImport }: JsonImportModeProps) {
                     <div className="flex gap-2">
                         <Button
                             variant="outline"
-                            onClick={() => {
-                                setPreviewData(null);
-                                setFileName('');
-                                setError('');
-                            }}
+                            onClick={handleCancel}
                             className="flex-1"
                         >
                             Hủy

@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -9,39 +9,35 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Database, LayoutGrid, FileJson, Download } from 'lucide-react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { addTable, addEdge } from '@/store/slices/schemaSlice';
-import { addVisibleNodeId, setVisibleNodeIds } from '@/store/slices/uiSlice';
+import { addVisibleNodeId, setAddTableDialogOpen } from '@/store/slices/uiSlice';
+import {
+    setMode, setSearchQuery, setApiUrl, setIsFetching, setTableName, setDisplayLabel,
+    addColumn, updateColumn, removeColumn, setSelectedTemplateName, setColumns, resetAddTableState
+} from '@/store/slices/addTableSlice';
 import { initialNodes } from '@/data/initialSchema';
 import { cn } from '@/lib/utils';
-import { TableColumn } from '@/types/schema';
 import { JsonImportMode } from './JsonImportMode';
 import { ExportMode } from './ExportMode';
 
-interface AddTableDialogProps {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-}
+export function AddTableDialog() {
+    const dispatch = useDispatch();
+    const open = useSelector((state: RootState) => state.ui.isAddTableDialogOpen);
+    const existingNodes = useSelector((state: RootState) => state.schema.present.nodes);
 
-export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
-    const dispatch = useAppDispatch();
-    const existingNodes = useAppSelector(state => state.schema.present.nodes);
-    const [mode, setMode] = useState<'manual' | 'template' | 'api' | 'json' | 'export'>('template');
-    const [searchQuery, setSearchQuery] = useState('');
-    // API Mode
-    const [apiUrl, setApiUrl] = useState('https://jsonplaceholder.typicode.com/users/1');
-    const [isFetching, setIsFetching] = useState(false);
-
-    // Manual Mode State
-    const [tableName, setTableName] = useState(''); // DB table name
-    const [displayLabel, setDisplayLabel] = useState(''); // Display label/role
-
-    const [columns, setColumns] = useState<TableColumn[]>([
-        { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
-    ]);
-
-    // Template Mode State
-    const [selectedTemplateName, setSelectedTemplateName] = useState<string | null>(null);
+    // AddTable State
+    const {
+        mode,
+        searchQuery,
+        apiUrl,
+        isFetching,
+        tableName,
+        displayLabel,
+        columns,
+        selectedTemplateName
+    } = useSelector((state: RootState) => state.addTable);
 
     // Convert initialNodes to templates
     const templates = useMemo(() => {
@@ -62,6 +58,14 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
         );
     }, [templates, searchQuery]);
 
+    const handleOpenChange = (isOpen: boolean) => {
+        dispatch(setAddTableDialogOpen(isOpen));
+        if (!isOpen) {
+            // Optional: reset state on close if desired, but user might want to keep it.
+            // dispatch(resetAddTableState());
+        }
+    };
+
     const handleJsonImport = (nodes: any[], edges: any[]) => {
         // Dispatch actions to add nodes and edges
         nodes.forEach(node => {
@@ -79,7 +83,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
             dispatch(addEdge(edge));
         });
 
-        onOpenChange(false);
+        handleOpenChange(false);
     };
 
     const handleAddTable = useCallback(() => {
@@ -102,9 +106,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
             dispatch(addVisibleNodeId(newId));
 
             // Reset
-            setTableName('');
-            setDisplayLabel('');
-            setColumns([{ name: 'id', type: 'uuid', isPrimaryKey: true, visible: true }]);
+            dispatch(resetAddTableState());
         } else {
             // Template Mode - ALWAYS create new instance
             if (!selectedTemplateName) return;
@@ -114,40 +116,74 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                 // Find how many instances of this table already exist to make the label unique
                 const instanceCount = existingNodes.filter(n => n.data.tableName === template.name.toLowerCase()).length;
                 const newId = `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-                const displayLabel = instanceCount > 0 ? `${template.name} (${instanceCount + 1})` : template.name;
+                const newDisplayLabel = instanceCount > 0 ? `${template.name} (${instanceCount + 1})` : template.name;
 
                 dispatch(addTable({
                     id: newId,
-                    name: displayLabel,
+                    name: newDisplayLabel,
                     tableName: template.tableName || template.name.toLowerCase().replace(/\s+/g, '_'),
                     columns: template.columns.map(c => ({ ...c, visible: true, isVirtual: false }))
                 }));
                 dispatch(addVisibleNodeId(newId));
             }
         }
-        onOpenChange(false);
-    }, [tableName, columns, dispatch, onOpenChange, mode, selectedTemplateName, templates, existingNodes, displayLabel]);
+        handleOpenChange(false);
+    }, [tableName, columns, dispatch, mode, selectedTemplateName, templates, existingNodes, displayLabel]);
 
-    const addColumn = useCallback(() => {
-        setColumns((cols) => [...cols, { name: '', type: 'varchar', visible: true }]);
-    }, []);
+    const handleFetchApi = async () => {
+        dispatch(setIsFetching(true));
+        try {
+            const res = await fetch(apiUrl);
+            const data = await res.json();
 
-    const updateColumn = useCallback((index: number, field: string, value: string | boolean) => {
-        setColumns((cols) =>
-            cols.map((col, i) =>
-                i === index ? { ...col, [field]: value } : col
-            )
-        );
-    }, []);
+            // Function to parse object recursively
+            const parseToColumns = (obj: any): any[] => {
+                if (!obj || typeof obj !== 'object') return [];
 
-    const removeColumn = useCallback((index: number) => {
-        setColumns((cols) => cols.filter((_, i) => i !== index));
-    }, []);
+                return Object.keys(obj).map(key => {
+                    const val = obj[key];
+                    let type = 'varchar';
+                    let children = undefined;
 
-    const selectedTemplate = templates.find(t => t.name === selectedTemplateName);
+                    if (Array.isArray(val)) {
+                        type = 'array';
+                    } else if (val === null) {
+                        type = 'varchar';
+                    } else if (typeof val === 'number') {
+                        type = Number.isInteger(val) ? 'int' : 'float';
+                    } else if (typeof val === 'boolean') {
+                        type = 'boolean';
+                    } else if (typeof val === 'object') {
+                        type = 'object';
+                        children = parseToColumns(val);
+                    }
+
+                    return {
+                        name: key,
+                        type,
+                        visible: true,
+                        isPrimaryKey: key === 'id',
+                        children
+                    };
+                });
+            };
+
+            const newCols = parseToColumns(data);
+
+            dispatch(setColumns(newCols));
+            dispatch(setTableName('imported_api_table'));
+            dispatch(setDisplayLabel('API Data Table'));
+            dispatch(setMode('manual')); // Switch to manual to review
+        } catch (e) {
+            console.error(e);
+            alert('Failed to fetch/parse API: ' + e);
+        } finally {
+            dispatch(setIsFetching(false));
+        }
+    };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="max-w-4xl bg-white text-gray-900 border-gray-200 shadow-xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle>Quản Lý Schema & Bảng</DialogTitle>
@@ -159,7 +195,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                 {/* Mode Switcher */}
                 <div className="grid grid-cols-5 gap-2 p-1 bg-gray-100 rounded-lg shrink-0">
                     <button
-                        onClick={() => setMode('template')}
+                        onClick={() => dispatch(setMode('template'))}
                         className={cn(
                             "py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all",
                             mode === 'template' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -168,7 +204,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                         <Database className="w-4 h-4" /> Chọn Mẫu
                     </button>
                     <button
-                        onClick={() => setMode('manual')}
+                        onClick={() => dispatch(setMode('manual'))}
                         className={cn(
                             "py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all",
                             mode === 'manual' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -177,7 +213,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                         <LayoutGrid className="w-4 h-4" /> Thủ Công
                     </button>
                     <button
-                        onClick={() => setMode('api')}
+                        onClick={() => dispatch(setMode('api'))}
                         className={cn(
                             "py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all",
                             mode === 'api' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -186,7 +222,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                         <LayoutGrid className="w-4 h-4" /> Import API
                     </button>
                     <button
-                        onClick={() => setMode('json')}
+                        onClick={() => dispatch(setMode('json'))}
                         className={cn(
                             "py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all",
                             mode === 'json' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -195,7 +231,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                         <FileJson className="w-4 h-4" /> Import schema
                     </button>
                     <button
-                        onClick={() => setMode('export')}
+                        onClick={() => dispatch(setMode('export'))}
                         className={cn(
                             "py-2 text-sm font-medium rounded-md flex items-center justify-center gap-2 transition-all",
                             mode === 'export' ? "bg-white text-green-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
@@ -222,7 +258,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                             <Input
                                                 placeholder="Tìm kiếm mẫu..."
                                                 value={searchQuery}
-                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
                                                 className="pl-8 h-9 text-sm bg-gray-50 border-gray-200 focus:bg-white"
                                             />
                                         </div>
@@ -233,7 +269,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                                 {filteredTemplates.map(table => (
                                                     <button
                                                         key={table.name}
-                                                        onClick={() => setSelectedTemplateName(table.name)}
+                                                        onClick={() => dispatch(setSelectedTemplateName(table.name))}
                                                         className={cn(
                                                             "w-full text-left px-3 py-2 rounded-md text-sm transition-all border border-transparent",
                                                             selectedTemplateName === table.name
@@ -316,62 +352,12 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                         <div className="flex gap-2">
                                             <Input
                                                 value={apiUrl}
-                                                onChange={(e) => setApiUrl(e.target.value)}
+                                                onChange={(e) => dispatch(setApiUrl(e.target.value))}
                                                 placeholder="https://api.example.com/data"
                                                 className="font-mono text-xs"
                                             />
                                             <Button
-                                                onClick={async () => {
-                                                    setIsFetching(true);
-                                                    try {
-                                                        const res = await fetch(apiUrl);
-                                                        const data = await res.json();
-
-                                                        // Function to parse object recursively
-                                                        const parseToColumns = (obj: any): any[] => {
-                                                            if (!obj || typeof obj !== 'object') return [];
-
-                                                            return Object.keys(obj).map(key => {
-                                                                const val = obj[key];
-                                                                let type = 'varchar';
-                                                                let children = undefined;
-
-                                                                if (Array.isArray(val)) {
-                                                                    type = 'array';
-                                                                } else if (val === null) {
-                                                                    type = 'varchar';
-                                                                } else if (typeof val === 'number') {
-                                                                    type = Number.isInteger(val) ? 'int' : 'float';
-                                                                } else if (typeof val === 'boolean') {
-                                                                    type = 'boolean';
-                                                                } else if (typeof val === 'object') {
-                                                                    type = 'object';
-                                                                    children = parseToColumns(val);
-                                                                }
-
-                                                                return {
-                                                                    name: key,
-                                                                    type,
-                                                                    visible: true,
-                                                                    isPrimaryKey: key === 'id',
-                                                                    children
-                                                                };
-                                                            });
-                                                        };
-
-                                                        const newCols = parseToColumns(data);
-
-                                                        setColumns(newCols);
-                                                        setTableName('imported_api_table');
-                                                        setDisplayLabel('API Data Table');
-                                                        setMode('manual'); // Switch to manual to review
-                                                    } catch (e) {
-                                                        console.error(e);
-                                                        alert('Failed to fetch/parse API: ' + e);
-                                                    } finally {
-                                                        setIsFetching(false);
-                                                    }
-                                                }}
+                                                onClick={handleFetchApi}
                                                 disabled={isFetching}
                                             >
                                                 {isFetching ? 'Fetching...' : 'Fetch & Parse'}
@@ -395,7 +381,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                         </label>
                                         <Input
                                             value={tableName}
-                                            onChange={(e) => setTableName(e.target.value)}
+                                            onChange={(e) => dispatch(setTableName(e.target.value))}
                                             placeholder="e.g. cong_dan, ho_khau"
                                             className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                                         />
@@ -407,7 +393,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                         </label>
                                         <Input
                                             value={displayLabel}
-                                            onChange={(e) => setDisplayLabel(e.target.value)}
+                                            onChange={(e) => dispatch(setDisplayLabel(e.target.value))}
                                             placeholder="e.g. Chủ hộ, Thành viên"
                                             className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
                                         />
@@ -417,7 +403,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                             <label className="text-sm font-medium text-gray-700">
                                                 Columns
                                             </label>
-                                            <Button variant="ghost" size="sm" onClick={addColumn} className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                            <Button variant="ghost" size="sm" onClick={() => dispatch(addColumn())} className="h-6 px-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
                                                 <Plus className="w-3 h-3 mr-1" /> Add Column
                                             </Button>
                                         </div>
@@ -426,13 +412,13 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                                 <div key={index} className="flex gap-2 items-center">
                                                     <Input
                                                         value={column.name}
-                                                        onChange={(e) => updateColumn(index, 'name', e.target.value)}
+                                                        onChange={(e) => dispatch(updateColumn({ index, field: 'name', value: e.target.value }))}
                                                         placeholder="Column name"
                                                         className="flex-1 bg-white border-gray-300 text-gray-900 h-8 text-sm placeholder:text-gray-400"
                                                     />
                                                     <Input
                                                         value={column.type}
-                                                        onChange={(e) => updateColumn(index, 'type', e.target.value)}
+                                                        onChange={(e) => dispatch(updateColumn({ index, field: 'type', value: e.target.value }))}
                                                         placeholder="Type"
                                                         className="w-24 bg-white border-gray-300 text-gray-900 h-8 text-sm"
                                                     />
@@ -440,7 +426,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                                         <input
                                                             type="checkbox"
                                                             checked={column.isPrimaryKey || false}
-                                                            onChange={(e) => updateColumn(index, 'isPrimaryKey', e.target.checked)}
+                                                            onChange={(e) => dispatch(updateColumn({ index, field: 'isPrimaryKey', value: e.target.checked }))}
                                                             className="rounded bg-gray-100 border-gray-300 accent-blue-600"
                                                         />
                                                         PK
@@ -449,7 +435,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                                                         variant="ghost"
                                                         size="icon"
                                                         className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                                                        onClick={() => removeColumn(index)}
+                                                        onClick={() => dispatch(removeColumn(index))}
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </Button>
@@ -465,7 +451,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
 
                 {mode !== 'json' && mode !== 'export' && (
                     <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100 shrink-0">
-                        <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-6">
+                        <Button variant="ghost" onClick={() => handleOpenChange(false)} className="text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-6">
                             Hủy
                         </Button>
                         <Button

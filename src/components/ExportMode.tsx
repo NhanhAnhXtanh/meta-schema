@@ -1,16 +1,16 @@
-import { useState } from 'react';
 import { Download, Copy } from 'lucide-react';
-import { useAppSelector } from '@/store/hooks';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { Button } from '@/components/ui/button';
 import { generateSchema } from '@/utils/schemaGenerator';
 import { generateSampleDataWithComments } from '@/utils/sampleDataGenerator';
-
-type ExportFormat = 'sample' | 'schema';
+import { setExportFormat, ExportFormat } from '@/store/slices/exportSlice';
 
 export function ExportMode() {
-    const [format, setFormat] = useState<ExportFormat>('sample');
-    const nodes = useAppSelector(state => state.schema.present.nodes);
-    const edges = useAppSelector(state => state.schema.present.edges);
+    const dispatch = useDispatch();
+    const format = useSelector((state: RootState) => state.export.format);
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
+    const edges = useSelector((state: RootState) => state.schema.present.edges);
 
     const getContent = () => {
         if (format === 'sample') {
@@ -45,6 +45,10 @@ export function ExportMode() {
         alert('Copied to clipboard!');
     };
 
+    const handleFormatChange = (newFormat: ExportFormat) => {
+        dispatch(setExportFormat(newFormat));
+    };
+
     return (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-gray-50/50">
             {/* Header Section */}
@@ -64,7 +68,7 @@ export function ExportMode() {
                     <Button
                         variant={format === 'sample' ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => setFormat('sample')}
+                        onClick={() => handleFormatChange('sample')}
                         className={format === 'sample' ? 'bg-green-600 hover:bg-green-700' : 'hover:bg-green-50 hover:text-green-700 hover:border-green-200'}
                     >
                         Sample Data
@@ -72,7 +76,7 @@ export function ExportMode() {
                     <Button
                         variant={format === 'schema' ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => setFormat('schema')}
+                        onClick={() => handleFormatChange('schema')}
                         className={format === 'schema' ? 'bg-purple-600 hover:bg-purple-700' : 'hover:bg-purple-50 hover:text-purple-700 hover:border-purple-200'}
                     >
                         Schema JSON

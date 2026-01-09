@@ -7,7 +7,8 @@ import { addTable, updateTable, resetSchema } from '@/store/slices/schemaSlice';
 import { deleteTableCascade } from '@/store/thunks/schemaThunks';
 import { THEME } from '@/constants/theme';
 import { Input } from './ui/input';
-import { useAppDispatch } from '@/store/hooks';
+import { useDispatch } from 'react-redux';
+import { AppDispatch } from '@/store';
 import { TableNodeData } from '@/types/schema';
 import {
   Dialog,
@@ -18,7 +19,7 @@ import {
 } from './ui/dialog';
 
 function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
-  const dispatch = useAppDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(data.label);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

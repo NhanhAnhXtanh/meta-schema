@@ -3,7 +3,7 @@ import { Node, Edge, Connection, applyNodeChanges, applyEdgeChanges, NodeChange,
 import { TableNodeData, TableColumn } from '@/types/schema';
 import { TABLE_COLORS } from '@/constants';
 
-interface SchemaState {
+export interface SchemaState {
     nodes: Node<TableNodeData>[];
     edges: Edge[];
 }
@@ -48,10 +48,10 @@ const schemaSlice = createSlice({
             state.edges.push(action.payload);
         },
         onNodesChange: (state, action: PayloadAction<NodeChange[]>) => {
-            state.nodes = applyNodeChanges(action.payload, state.nodes);
+            state.nodes = applyNodeChanges(action.payload, state.nodes) as Node<TableNodeData>[];
         },
         onEdgesChange: (state, action: PayloadAction<EdgeChange[]>) => {
-            state.edges = applyEdgeChanges(action.payload, state.edges);
+            state.edges = applyEdgeChanges(action.payload, state.edges) as Edge[];
         },
         resetSchema: (state) => {
             state.nodes = [];
@@ -265,7 +265,7 @@ const schemaSlice = createSlice({
                     } else {
                         // n-1 or 1-1, FK is on source
                         if (e.source && e.data?.sourceFK) {
-                            potentialFKsToCleanup.push({ nodeId: e.source, fieldName: e.data.sourceFK });
+                            potentialFKsToCleanup.push({ nodeId: e.source, fieldName: e.data.sourceFK as string });
                         }
                     }
                 });

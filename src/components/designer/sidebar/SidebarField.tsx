@@ -3,7 +3,8 @@ import { GripVertical, Trash2, ChevronDown, ChevronRight, Check, Edit2, MoreVert
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableColumn } from '@/types/schema';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store';
 import { updateField, toggleFieldVisibility } from '@/store/slices/schemaSlice';
 import { deleteFieldCascade } from '@/store/thunks/schemaThunks';
 import { addVisibleNodeId, removeVisibleNodeId, openEditLinkFieldDialog } from '@/store/slices/uiSlice';
@@ -44,7 +45,7 @@ const SidebarFieldBase = ({
     onDragStart, onDragOver, onDrop,
     isDragging, isDragOver, isReadOnly
 }: SidebarFieldProps) => {
-    const dispatch = useAppDispatch();
+    const dispatch = useDispatch<AppDispatch>();
 
 
     const [localName, setLocalName] = useState(field.name || '');
@@ -71,8 +72,8 @@ const SidebarFieldBase = ({
     }, [localName, nodeId, index, dispatch, field.name, field.isVirtual, field.type, isReadOnly]);
 
 
-    const edges = useAppSelector(state => state.schema.present.edges);
-    const nodes = useAppSelector(state => state.schema.present.nodes);
+    const edges = useSelector((state: RootState) => state.schema.present.edges);
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
 
     // Find linked table name if virtual
     let linkedTableName = '';
@@ -99,7 +100,7 @@ const SidebarFieldBase = ({
 
     // -- Nested Field Logic --
     const [isExpanded, setIsExpanded] = useState(false);
-    const visibleNodeIds = useAppSelector(state => state.ui.visibleNodeIds);
+    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
 
     // Determine target node for nested fields
     let targetNodeId: string | null = null;

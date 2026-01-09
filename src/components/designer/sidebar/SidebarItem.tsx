@@ -1,14 +1,23 @@
-import React, { useState, memo } from 'react';
+import React, { memo } from 'react';
 import { Node } from '@xyflow/react';
-import { ChevronDown, ChevronRight, Edit2, GripVertical, MoreVertical, Palette, Trash2, Plus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2, GripVertical, MoreVertical, Trash2, Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableNodeData } from '@/types/schema';
-import { useAppDispatch } from '@/store/hooks';
-import { updateTable, reorderFields, addTable } from '@/store/slices/schemaSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@/store';
+import { updateTable, reorderFields } from '@/store/slices/schemaSlice';
 import { deleteTableCascade } from '@/store/thunks/schemaThunks';
 import { setSelectedNodeId, openLinkFieldDialog } from '@/store/slices/uiSlice';
 import { SidebarField } from './SidebarField';
+import {
+    setEditingNodeId,
+    setEditName,
+    setMenuOpenNodeId,
+    setDeleteDialogNodeId,
+    setSidebarFieldDragState,
+    setSidebarFieldDragOverIndex
+} from '@/store/slices/sidebarSlice';
 
 import {
     Dialog,
@@ -35,25 +44,36 @@ const SidebarItemBase = ({
     node, depth = 0, isExpanded, onToggleExpand, isSelected,
     onDragStart, onDragOver, onDrop, isDragging, isDragOver
 }: SidebarItemProps) => {
-    const dispatch = useAppDispatch();
-    const [isEditing, setIsEditing] = useState(false);
-    const [editName, setEditName] = useState(node.data.label);
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+    const dispatch = useDispatch<AppDispatch>();
 
-    // Field DnD state
-    const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
-    const [dragOverFieldIndex, setDragOverFieldIndex] = useState<number | null>(null);
+    // UI State from Redux
+    const {
+        editingNodeId,
+        editName: globalEditName,
+        menuOpenNodeId,
+        deleteDialogNodeId,
+        draggedFieldNodeId,
+        draggedFieldIndex,
+        dragOverFieldIndex
+    } = useSelector((state: RootState) => state.sidebar);
+
+    const isEditing = editingNodeId === node.id;
+    const currentEditName = isEditing ? globalEditName : node.data.label;
+    const menuOpen = menuOpenNodeId === node.id;
+    const showDeleteDialog = deleteDialogNodeId === node.id;
+
+    // Field dragging state for THIS node
+    const isThisNodeFieldDragging = draggedFieldNodeId === node.id;
 
     const handleSaveEdit = () => {
-        if (editName.trim()) {
-            dispatch(updateTable({ id: node.id, updates: { label: editName.trim() } }));
-            setIsEditing(false);
+        if (currentEditName.trim()) {
+            dispatch(updateTable({ id: node.id, updates: { label: currentEditName.trim() } }));
+            dispatch(setEditingNodeId(null));
         }
     };
 
     const handleFieldDragStart = (e: React.DragEvent, index: number) => {
-        setDraggedFieldIndex(index);
+        dispatch(setSidebarFieldDragState({ nodeId: node.id, index }));
         e.dataTransfer.effectAllowed = 'move';
         e.stopPropagation(); // Stop parent node drag
     };
@@ -61,24 +81,27 @@ const SidebarItemBase = ({
     const handleFieldDragOver = (e: React.DragEvent, index: number) => {
         e.preventDefault();
         e.stopPropagation();
-        if (draggedFieldIndex !== null && draggedFieldIndex !== index) {
-            setDragOverFieldIndex(index);
+        if (isThisNodeFieldDragging && draggedFieldIndex !== index) {
+            dispatch(setSidebarFieldDragOverIndex(index));
         }
     };
 
     const handleFieldDrop = (e: React.DragEvent, index: number) => {
         e.preventDefault();
         e.stopPropagation();
-        if (draggedFieldIndex !== null && draggedFieldIndex !== index) {
+        if (isThisNodeFieldDragging && draggedFieldIndex !== null && draggedFieldIndex !== index) {
             dispatch(reorderFields({ nodeId: node.id, oldIndex: draggedFieldIndex, newIndex: index }));
         }
-        setDraggedFieldIndex(null);
-        setDragOverFieldIndex(null);
+        dispatch(setSidebarFieldDragState({ nodeId: null, index: null }));
+        dispatch(setSidebarFieldDragOverIndex(null));
     };
 
     const handleAddField = () => {
         dispatch(openLinkFieldDialog(node.id));
     };
+
+    // Helper to close menu
+    const closeMenu = () => dispatch(setMenuOpenNodeId(null));
 
     return (
         <div className="mb-1">
@@ -97,7 +120,6 @@ const SidebarItemBase = ({
                 style={{ paddingLeft: `${depth === 0 ? 8 : depth * 12 + 8}px` }}
             >
                 <div className="flex items-center relative w-full pr-2">
-                    {/* Color Strip */}
                     {/* Color Strip */}
                     {depth === 0 && (
                         <div
@@ -123,8 +145,8 @@ const SidebarItemBase = ({
                     }}>
                         {isEditing ? (
                             <Input
-                                value={editName}
-                                onChange={e => setEditName(e.target.value)}
+                                value={currentEditName}
+                                onChange={e => dispatch(setEditName(e.target.value))}
                                 onBlur={handleSaveEdit}
                                 onKeyDown={e => e.key === 'Enter' && handleSaveEdit()}
                                 autoFocus
@@ -147,17 +169,17 @@ const SidebarItemBase = ({
 
                     {/* Menu */}
                     <div className="relative">
-                        <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-all">
+                        <button onClick={() => dispatch(setMenuOpenNodeId(menuOpen ? null : node.id))} className="p-2 hover:bg-gray-200 rounded opacity-0 group-hover:opacity-100 transition-all">
                             <MoreVertical className="w-4 h-4 text-gray-500" />
                         </button>
                         {menuOpen && (
                             <>
-                                <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                                <div className="fixed inset-0 z-10" onClick={closeMenu} />
                                 <div className="absolute right-0 top-8 z-20 bg-white border border-gray-200 rounded-md shadow-lg min-w-[140px]">
-                                    <button onClick={() => { setIsEditing(true); setMenuOpen(false); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-700">
+                                    <button onClick={() => { dispatch(setEditingNodeId(node.id)); dispatch(setEditName(node.data.label)); closeMenu(); }} className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2 text-gray-700">
                                         <Edit2 className="w-3 h-3" /> Rename
                                     </button>
-                                    <button onClick={() => { setMenuOpen(false); setShowDeleteDialog(true); }} className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 border-t border-gray-100">
+                                    <button onClick={() => { closeMenu(); dispatch(setDeleteDialogNodeId(node.id)); }} className="w-full px-4 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2 border-t border-gray-100">
                                         <Trash2 className="w-3 h-3" /> Delete
                                     </button>
                                 </div>
@@ -182,8 +204,8 @@ const SidebarItemBase = ({
                             onDragStart={handleFieldDragStart}
                             onDragOver={handleFieldDragOver}
                             onDrop={handleFieldDrop}
-                            isDragging={draggedFieldIndex === idx}
-                            isDragOver={dragOverFieldIndex === idx}
+                            isDragging={isThisNodeFieldDragging && draggedFieldIndex === idx}
+                            isDragOver={isThisNodeFieldDragging && dragOverFieldIndex === idx}
                         />
                     ))}
 
@@ -198,7 +220,7 @@ const SidebarItemBase = ({
                 </div>
             )}
 
-            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <Dialog open={showDeleteDialog} onOpenChange={(open) => !open && dispatch(setDeleteDialogNodeId(null))}>
                 <DialogContent className="sm:max-w-[425px]">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-red-600">
@@ -216,7 +238,7 @@ const SidebarItemBase = ({
                     </DialogHeader>
                     <div className="flex justify-end gap-3 mt-4">
                         <button
-                            onClick={() => setShowDeleteDialog(false)}
+                            onClick={() => dispatch(setDeleteDialogNodeId(null))}
                             className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                             Hủy bỏ
@@ -224,7 +246,7 @@ const SidebarItemBase = ({
                         <button
                             onClick={() => {
                                 dispatch(deleteTableCascade(node.id));
-                                setShowDeleteDialog(false);
+                                dispatch(setDeleteDialogNodeId(null));
                             }}
                             className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                         >

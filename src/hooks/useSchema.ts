@@ -3,9 +3,9 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { Node } from '@xyflow/react';
-import { TableNodeData, TableColumn } from '@/types/schema';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState, AppDispatch } from '@/store';
+import { TableColumn } from '@/types/schema';
 import { SchemaService } from '@/services/schemaService';
 import {
     addField,
@@ -19,7 +19,7 @@ import {
  * Hook for field operations
  */
 export function useFieldOperations(nodeId: string) {
-    const dispatch = useAppDispatch();
+    const dispatch = useDispatch<AppDispatch>();
 
     const handleAddField = useCallback((field: TableColumn) => {
         dispatch(addField({ nodeId, field }));
@@ -54,8 +54,8 @@ export function useFieldOperations(nodeId: string) {
  * Hook for getting linked node information
  */
 export function useLinkedNode(nodeId: string, field: TableColumn) {
-    const edges = useAppSelector(state => state.schema.present.edges);
-    const nodes = useAppSelector(state => state.schema.present.nodes);
+    const edges = useSelector((state: RootState) => state.schema.present.edges);
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
 
     return useMemo(() => {
         const targetNode = SchemaService.getLinkedTargetNode(nodeId, field, edges, nodes);
@@ -71,8 +71,8 @@ export function useLinkedNode(nodeId: string, field: TableColumn) {
  * Hook for node hierarchy operations
  */
 export function useNodeHierarchy() {
-    const nodes = useAppSelector(state => state.schema.present.nodes);
-    const edges = useAppSelector(state => state.schema.present.edges);
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
+    const edges = useSelector((state: RootState) => state.schema.present.edges);
 
     const rootNodes = useMemo(() =>
         SchemaService.getRootNodes(nodes, edges),
@@ -100,7 +100,7 @@ export function useNodeHierarchy() {
  * Hook for field validation
  */
 export function useFieldValidation(nodeId: string) {
-    const nodes = useAppSelector(state => state.schema.present.nodes);
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
 
     const isFieldNameUnique = useCallback((fieldName: string, excludeIndex?: number) => {
         const node = nodes.find(n => n.id === nodeId);
@@ -131,8 +131,8 @@ export function useFieldValidation(nodeId: string) {
  * Hook for getting visible nodes
  */
 export function useVisibleNodes() {
-    const nodes = useAppSelector(state => state.schema.present.nodes);
-    const visibleNodeIds = useAppSelector(state => state.ui.visibleNodeIds);
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
+    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
 
     return useMemo(() =>
         nodes.filter(node => visibleNodeIds.includes(node.id)),

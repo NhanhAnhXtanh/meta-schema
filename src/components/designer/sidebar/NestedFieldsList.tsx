@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useAppSelector } from '@/store/hooks';
 import { SidebarField } from './SidebarField';
 import { Plus } from 'lucide-react';
-import { useAppDispatch } from '@/store/hooks';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { reorderFields } from '@/store/slices/schemaSlice';
 import { openLinkFieldDialog } from '@/store/slices/uiSlice';
 import { TableColumn } from '@/types/schema';
@@ -15,8 +15,8 @@ interface NestedFieldsListProps {
 }
 
 export function NestedFieldsList({ nodeId, fields, rootNodeId, isReadOnly }: NestedFieldsListProps) {
-    const dispatch = useAppDispatch();
-    const targetNode = useAppSelector(state => nodeId ? state.schema.present.nodes.find(n => n.id === nodeId) : null);
+    const dispatch = useDispatch();
+    const targetNode = useSelector((state: RootState) => nodeId ? state.schema.present.nodes.find(n => n.id === nodeId) : null);
 
     // Field DnD state
     const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);

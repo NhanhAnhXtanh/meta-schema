@@ -1,23 +1,38 @@
-import { useState, useMemo, useRef } from 'react';
-import { useAppSelector, useAppDispatch } from '@/store/hooks';
+import { useMemo, useRef } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { setNodes } from '@/store/slices/schemaSlice';
+import {
+    toggleSidebarNodeExpand,
+    setSidebarDraggedNodeId,
+    setSidebarDragOverNodeId,
+    setSidebarWidth,
+    setIsSidebarResizing,
+    setIsSidebarCollapsed
+} from '@/store/slices/sidebarSlice';
 
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarItem } from './SidebarItem';
 
 export function Sidebar() {
-    const dispatch = useAppDispatch();
-    const nodes = useAppSelector(state => state.schema.present.nodes);
-    const edges = useAppSelector(state => state.schema.present.edges);
-    const visibleNodeIds = useAppSelector(state => state.ui.visibleNodeIds);
-    const selectedNodeId = useAppSelector(state => state.ui.selectedNodeId);
+    const dispatch = useDispatch();
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
+    const edges = useSelector((state: RootState) => state.schema.present.edges);
+    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
+    const selectedNodeId = useSelector((state: RootState) => state.ui.selectedNodeId);
 
-    const [searchQuery, setSearchQuery] = useState('');
-    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+    // Sidebar State
+    const {
+        searchQuery,
+        expandedNodes,
+        draggedNodeId,
+        dragOverNodeId,
+        width,
+        isResizing,
+        isCollapsed
+    } = useSelector((state: RootState) => state.sidebar);
 
-    // DnD state for Nodes
-    const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
-    const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null);
+    const sidebarRef = useRef<HTMLDivElement>(null);
 
     // Filter visible nodes
     // Trust Redux state for visible nodes
@@ -35,22 +50,19 @@ export function Sidebar() {
     }, [searchQuery, rootNodes, appVisibleNodes]);
 
     const handleToggleExpand = (id: string) => {
-        const next = new Set(expandedNodes);
-        if (next.has(id)) next.delete(id);
-        else next.add(id);
-        setExpandedNodes(next);
+        dispatch(toggleSidebarNodeExpand(id));
     };
 
     // DnD Handlers for Nodes
     const handleNodeDragStart = (e: React.DragEvent, id: string) => {
-        setDraggedNodeId(id);
+        dispatch(setSidebarDraggedNodeId(id));
         e.dataTransfer.effectAllowed = 'move';
     };
 
     const handleNodeDragOver = (e: React.DragEvent, id: string) => {
         e.preventDefault();
         if (draggedNodeId && draggedNodeId !== id) {
-            setDragOverNodeId(id);
+            dispatch(setSidebarDragOverNodeId(id));
         }
     };
 
@@ -67,25 +79,19 @@ export function Sidebar() {
                 dispatch(setNodes(newNodes));
             }
         }
-        setDraggedNodeId(null);
-        setDragOverNodeId(null);
+        dispatch(setSidebarDraggedNodeId(null));
+        dispatch(setSidebarDragOverNodeId(null));
     };
 
-    // Resizing State
-    const [width, setWidth] = useState(320);
-    const [isResizing, setIsResizing] = useState(false);
-    const [isCollapsed, setIsCollapsed] = useState(false);
-    const sidebarRef = useRef<HTMLDivElement>(null);
-
     const startResizing = (e: React.MouseEvent) => {
-        setIsResizing(true);
+        dispatch(setIsSidebarResizing(true));
         e.preventDefault();
         window.addEventListener('mousemove', resize as any);
         window.addEventListener('mouseup', stopResizing);
     };
 
     const stopResizing = () => {
-        setIsResizing(false);
+        dispatch(setIsSidebarResizing(false));
         window.removeEventListener('mousemove', resize as any);
         window.removeEventListener('mouseup', stopResizing);
     };
@@ -94,16 +100,16 @@ export function Sidebar() {
         if (sidebarRef.current && !isCollapsed) {
             const newWidth = e.clientX - sidebarRef.current.getBoundingClientRect().left;
             if (newWidth > 280 && newWidth < 800) {
-                setWidth(newWidth);
+                dispatch(setSidebarWidth(newWidth));
             } else if (newWidth <= 280) {
                 // Do not collapse automatically on resize, just stop at min width
-                setWidth(280); // Hard stop at min width
+                dispatch(setSidebarWidth(280)); // Hard stop at min width
             }
         }
     };
 
     const toggleCollapse = () => {
-        setIsCollapsed(!isCollapsed);
+        dispatch(setIsSidebarCollapsed(!isCollapsed));
     };
 
     if (isCollapsed) {
@@ -125,17 +131,13 @@ export function Sidebar() {
             className="flex flex-col h-full bg-white border-r border-gray-200 flex-shrink-0 relative group transition-[width] duration-0 ease-linear"
             style={{ width: `${width}px` }}
         >
-            <SidebarHeader
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                onCollapse={toggleCollapse}
-            />
+            <SidebarHeader />
             <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
                 {filteredNodes.map(node => (
                     <SidebarItem
                         key={node.id}
                         node={node}
-                        isExpanded={expandedNodes.has(node.id)}
+                        isExpanded={expandedNodes.includes(node.id)}
                         onToggleExpand={handleToggleExpand}
                         isSelected={selectedNodeId === node.id}
                         onDragStart={handleNodeDragStart}

@@ -11,13 +11,15 @@ import {
     useNodes,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { onNodesChange, onEdgesChange, onConnect } from '@/store/slices/schemaSlice';
+import { TableNodeData } from '@/types/schema';
 import { TableNode } from '@/components/TableNode';
 import { RelationshipEdge } from '@/components/RelationshipEdge';
 
 const nodeTypes: NodeTypes = {
-    table: TableNode,
+    table: TableNode as any,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -30,7 +32,7 @@ function NodeUpdater() {
     const updateNodeInternals = useUpdateNodeInternals();
     const nodes = useNodes();
 
-    const nodesVersion = nodes.reduce((sum, node) => sum + (node.data._version || 0), 0);
+    const nodesVersion = nodes.reduce((sum, node) => sum + ((node.data as TableNodeData)._version || 0), 0);
 
     useEffect(() => {
         // Only update nodes that have _version (recently modified)
@@ -44,11 +46,11 @@ function NodeUpdater() {
 }
 
 export function FlowCanvas() {
-    const dispatch = useAppDispatch();
-    const nodes = useAppSelector((state) => state.schema.present.nodes);
-    const edges = useAppSelector((state) => state.schema.present.edges);
-    const visibleNodeIds = useAppSelector((state) => state.ui.visibleNodeIds);
-    const selectedNodeId = useAppSelector((state) => state.ui.selectedNodeId);
+    const dispatch = useDispatch();
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
+    const edges = useSelector((state: RootState) => state.schema.present.edges);
+    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
+    const selectedNodeId = useSelector((state: RootState) => state.ui.selectedNodeId);
 
     const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
@@ -61,7 +63,7 @@ export function FlowCanvas() {
             }));
     }, [nodes, visibleNodeIds, selectedNodeId]);
 
-    const onInit = useCallback((instance: ReactFlowInstance) => {
+    const onInit = useCallback((instance: any) => {
         reactFlowInstance.current = instance;
     }, []);
 

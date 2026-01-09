@@ -1,32 +1,36 @@
+
+
 import { useEffect } from 'react';
 import { Plus, Search, Undo2, Redo2, LayoutDashboard, ChevronLeft } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '@/store';
 import { setAddTableDialogOpen } from '@/store/slices/uiSlice';
 import { setNodes } from '@/store/slices/schemaSlice';
+import { setSidebarSearchQuery, setIsSidebarCollapsed } from '@/store/slices/sidebarSlice';
 import { performAutoLayout } from '@/utils/autoLayout';
 import { ActionCreators } from 'redux-undo';
 
-interface SidebarHeaderProps {
-    searchQuery: string;
-    setSearchQuery: (query: string) => void;
-    onCollapse?: () => void;
-}
+export function SidebarHeader() {
+    const dispatch = useDispatch();
 
-export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: SidebarHeaderProps) {
-    const dispatch = useAppDispatch();
+    // Data from Redux
+    const searchQuery = useSelector((state: RootState) => state.sidebar.searchQuery);
+    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
 
-    // Schema Data for Auto Layout
-    const nodes = useAppSelector(state => state.schema.present.nodes);
-
-    // Undo/Redo State
-    const canUndo = useAppSelector(state => state.schema.past.length > 0);
-    const canRedo = useAppSelector(state => state.schema.future.length > 0);
+    const canUndo = useSelector((state: RootState) => state.schema.past.length > 0);
+    const canRedo = useSelector((state: RootState) => state.schema.future.length > 0);
 
     const handleAutoLayout = () => {
         const layoutedNodes = performAutoLayout(nodes);
         dispatch(setNodes(layoutedNodes));
+    };
+
+    const handleCollapse = () => {
+        dispatch(setIsSidebarCollapsed(true)); // Collapsing from header usually implies going to collapsed state
+        // Actually, sidebarSlice has a specific toggle, but here we can just set it. 
+        // Wait, the header button is "Minimize". 
     };
 
     // Keyboard Shortcuts
@@ -105,20 +109,16 @@ export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: Sideb
                     </Button>
 
                     {/* Minimize Button */}
-                    {onCollapse && (
-                        <>
-                            <div className="w-px h-4 bg-gray-300 mx-1" />
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-gray-500 hover:text-gray-900"
-                                onClick={onCollapse}
-                                title="Shrink"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </Button>
-                        </>
-                    )}
+                    <div className="w-px h-4 bg-gray-300 mx-1" />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-gray-500 hover:text-gray-900"
+                        onClick={handleCollapse}
+                        title="Shrink"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                    </Button>
                 </div>
             </div>
             <div className="relative">
@@ -126,12 +126,10 @@ export function SidebarHeader({ searchQuery, setSearchQuery, onCollapse }: Sideb
                 <Input
                     placeholder="Search tables..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => dispatch(setSidebarSearchQuery(e.target.value))}
                     className="pl-8 h-8 text-xs bg-gray-50 border-gray-200 text-gray-900 focus:bg-white placeholder:text-gray-500"
                 />
             </div>
-
-            {/* Export/Import Moved to Manage Schema Dialog */}
         </div>
     );
 }

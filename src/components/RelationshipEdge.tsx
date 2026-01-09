@@ -1,6 +1,6 @@
-import { memo, useState, useEffect, useCallback, useMemo } from 'react';
-import { EdgeProps, getBezierPath, useReactFlow, Position, getSmoothStepPath, Node } from '@xyflow/react';
-import { TableNodeData, TableColumn } from '@/types/schema';
+import { memo, useState, useEffect, useMemo } from 'react';
+import { EdgeProps, getBezierPath, useReactFlow, Position, getSmoothStepPath, Node, Edge } from '@xyflow/react';
+import { TableNodeData } from '@/types/schema';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -13,7 +13,7 @@ import { ValidationUtils } from '@/utils/validation';
 import { MoreVertical, Trash2, Edit2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { THEME } from '@/constants/theme';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { useDispatch } from 'react-redux';
 import { confirmLinkField, confirmLinkObject, deleteField } from '@/store/slices/schemaSlice';
 
 export type RelationshipType = '1-1' | '1-n' | 'n-1';
@@ -26,6 +26,7 @@ export interface RelationshipEdgeData {
   primaryKeyField?: string;
   objectFieldName?: string;
   sourceFK?: string;
+  [key: string]: unknown;
 }
 
 export function RelationshipEdge({
@@ -44,11 +45,11 @@ export function RelationshipEdge({
   target,
   sourceHandleId: sourceHandle,
   targetHandleId: targetHandle,
-}: EdgeProps<RelationshipEdgeData>) {
+}: EdgeProps<Edge<RelationshipEdgeData>>) {
 
-  const { updateEdge, getNode, deleteElements, getEdges, getNodes } = useReactFlow();
-  const dispatch = useAppDispatch();
-  const nodes = getNodes(); // Get latest nodes for dropdown
+  const { updateEdge, getNode, deleteElements, getNodes } = useReactFlow();
+  const dispatch = useDispatch();
+  const nodes = getNodes() as Node<TableNodeData>[]; // Get latest nodes for dropdown
 
   const [relationshipType, setRelationshipType] = useState<RelationshipType>(
     data?.relationshipType || '1-n'
@@ -128,7 +129,7 @@ export function RelationshipEdge({
     if (!editedFieldName || !editedTargetId || !editedSourceKey || !editedTargetKey) return;
 
     // Find original field index to delete
-    const sourceNode = getNode(source);
+    const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
     if (!sourceNode) return;
 
     // Determine original field index based on sourceHandle (which is the Field Name)
@@ -216,7 +217,7 @@ export function RelationshipEdge({
     setRelationshipType(newType);
 
     // Smart auto-fill keys based on new type constraints
-    const sourceNode = getNode(source);
+    const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
     const targetNode = nodes.find(n => n.id === editedTargetId);
 
     if (newType === '1-n') {
@@ -391,7 +392,6 @@ export function RelationshipEdge({
   const edgeColor = getRelationshipColor(relationshipType);
   const defaultColor = THEME.RELATIONSHIP.COLORS.DEFAULT; // Màu xám mặc định
   const currentColor = selected ? edgeColor : (isHovered ? edgeColor : defaultColor);
-  const showButton = true; // Luôn hiện button 3 chấm
 
   return (
     <g
