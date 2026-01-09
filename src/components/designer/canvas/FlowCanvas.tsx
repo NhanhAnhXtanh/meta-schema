@@ -1,15 +1,15 @@
-import { useCallback, useRef, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
     ReactFlow,
     Background,
     Controls,
     MiniMap,
-    ReactFlowInstance,
     NodeTypes,
     EdgeTypes,
     useUpdateNodeInternals,
     useNodes,
 } from '@xyflow/react';
+import { CanvasVisualHandler } from '@/components/designer/canvas/CanvasVisualHandler';
 import '@xyflow/react/dist/style.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
@@ -49,42 +49,13 @@ export function FlowCanvas() {
     const dispatch = useDispatch();
     const nodes = useSelector((state: RootState) => state.schema.present.nodes);
     const edges = useSelector((state: RootState) => state.schema.present.edges);
-    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
-    const selectedNodeId = useSelector((state: RootState) => state.ui.selectedNodeId);
 
-    const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
+
+    // Filter nodes based on isActive property
     const visibleNodes = useMemo(() => {
-        return nodes
-            .filter(node => visibleNodeIds.includes(node.id))
-            .map(node => ({
-                ...node,
-                selected: node.id === selectedNodeId
-            }));
-    }, [nodes, visibleNodeIds, selectedNodeId]);
-
-    const onInit = useCallback((instance: any) => {
-        reactFlowInstance.current = instance;
-    }, []);
-
-    // Listen for flyToNode event
-    useEffect(() => {
-        const handleFlyToNode = (event: Event) => {
-            const customEvent = event as CustomEvent<{ nodeId: string }>;
-            const nodeId = customEvent.detail?.nodeId;
-            if (nodeId && reactFlowInstance.current) {
-                reactFlowInstance.current.fitView({
-                    nodes: [{ id: nodeId }],
-                    duration: 800,
-                    padding: 0.2,
-                    maxZoom: 1.5
-                });
-            }
-        };
-
-        window.addEventListener('flyToNode', handleFlyToNode);
-        return () => window.removeEventListener('flyToNode', handleFlyToNode);
-    }, []);
+        return nodes.filter(node => node.data?.isActive !== false); // Default to true if undefined
+    }, [nodes]);
 
     return (
         <div className="flex-1 h-full w-full">
@@ -96,10 +67,10 @@ export function FlowCanvas() {
                 onConnect={(conn) => dispatch(onConnect(conn))}
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
-                onInit={onInit}
                 fitView
                 className="bg-gray-50"
             >
+                <CanvasVisualHandler />
                 <NodeUpdater />
                 <Background color="#ccc" gap={16} />
                 <Controls className="bg-white text-black border-gray-200 shadow-sm" />

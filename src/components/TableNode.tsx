@@ -3,8 +3,8 @@ import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Plus, Copy, Trash2, Edit2 } from 'lucide-react';
 import { openLinkFieldDialog, addVisibleNodeId } from '@/store/slices/uiSlice';
-import { addTable, updateTable, resetSchema } from '@/store/slices/schemaSlice';
-import { deleteTableCascade } from '@/store/thunks/schemaThunks';
+import { schemaEventBus } from '@/events/eventBus';
+import { SchemaEvents } from '@/events/schemaEvents';
 import { THEME } from '@/constants/theme';
 import { Input } from './ui/input';
 import { useDispatch } from 'react-redux';
@@ -31,18 +31,18 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
 
   const handleClone = () => {
     const newId = `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    dispatch(addTable({
+    schemaEventBus.emit(SchemaEvents.TABLE_ADD, {
       id: newId,
       name: `${data.label} (Bản sao)`,
       tableName: data.tableName || data.label,
       columns: data.columns
-    }));
+    });
     dispatch(addVisibleNodeId(newId));
   };
 
   const handleSaveRename = () => {
     if (editName.trim()) {
-      dispatch(updateTable({ id, updates: { label: editName.trim() } }));
+      schemaEventBus.emit(SchemaEvents.TABLE_UPDATE, { id, updates: { label: editName.trim() } });
       setIsEditing(false);
     }
   };
@@ -249,7 +249,7 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
             </button>
             <button
               onClick={() => {
-                dispatch(deleteTableCascade(id));
+                schemaEventBus.emit(SchemaEvents.TABLE_DELETE, { id });
                 setShowDeleteDialog(false);
               }}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

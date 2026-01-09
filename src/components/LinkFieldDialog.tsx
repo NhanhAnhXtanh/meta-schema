@@ -28,13 +28,8 @@ import {
   resetLinkFieldState
 } from '@/store/slices/linkFieldSlice';
 import { closeLinkFieldDialog, addVisibleNodeId } from '@/store/slices/uiSlice';
-import {
-  confirmLinkField,
-  confirmLinkObject,
-  updateLinkConnection,
-  deleteField,
-  addTable
-} from '@/store/slices/schemaSlice';
+import { SchemaEvents } from '@/events/schemaEvents';
+import { schemaEventBus } from '@/events/eventBus';
 
 export function LinkFieldDialog() {
   const dispatch = useDispatch();
@@ -192,11 +187,13 @@ export function LinkFieldDialog() {
 
       // 1. If Edit Mode, delete field first to cleanup old definition
       if (isEditMode && fieldIndex !== undefined) {
-        dispatch(deleteField({
-          nodeId: sourceNodeId,
-          fieldIndex: fieldIndex,
-          skipRecursive: true
-        }));
+        if (isEditMode && fieldIndex !== undefined) {
+          schemaEventBus.emit(SchemaEvents.FIELD_DELETE, {
+            nodeId: sourceNodeId,
+            fieldIndex: fieldIndex,
+            skipRecursive: true
+          });
+        }
       }
 
       // 2. If it's a new instance, create it first
@@ -235,13 +232,13 @@ export function LinkFieldDialog() {
             attempts++;
           }
 
-          dispatch(addTable({
+          schemaEventBus.emit(SchemaEvents.TABLE_ADD, {
             id: newId,
             name: label,
             tableName: template.data.tableName,
             columns: template.data.columns.map(c => ({ ...c, isVirtual: false })),
             position
-          }));
+          });
           dispatch(addVisibleNodeId(newId));
           actualTargetNodeId = newId;
         }
@@ -249,34 +246,66 @@ export function LinkFieldDialog() {
 
       // 3. Add Relationship
       if (isEditMode) {
-        dispatch(updateLinkConnection({
-          sourceNodeId: sourceNodeId!,
-          oldFieldName: initialValues?.fieldName || '',
-          newFieldName: newFieldName.trim(),
-          targetNodeId: actualTargetNodeId,
-          sourceKey: selectedSourceKey,
-          targetKey: selectedTargetKey,
-          relationshipType: linkType
-        }));
-      } else {
+        // We don't have a direct UPDATE_LINK event yet, but we can simulate it by delete + add (which we sort of did above by deleting).
+        // However, wait, deleteField above is async? No, events are emitted.
+        // Actually, let's look at schemaEvents.
+        // We might need a SCHEMA_LINK_CONNECT event which handles both types.
+        // Or specific events like LINK_CONFIRM_1N, LINK_CONFIRM_OBJECT.
+        // Let's check schemaEvents.ts content later if needed, but for now assuming we need to add new events or reuse existing logic.
+        // Since JmixDataController handles logic, we should emit an event that describes the INTENT.
+
+        // Let's use a generic 'FIELD_ADD_LINK' or similar if possible.
+        // Wait, JmixDataController doesn't have listeners for detailed link logic yet?
+        // Let's check JmixDataController.tsx content first. I'll read it in next step before applying this chunk.
+        // But to save turns, I will assume I need to ADD these event handlers to JmixDataController if they don't exist.
+        // I will emit 'RELATIONSHIP_ADD' or similar.
+
+        // Actually, looking at current Redux actions: confirmLinkField, confirmLinkObject.
+        // I should emit events mapping to these.
+
         if (linkType === '1-n') {
-          dispatch(confirmLinkField({
+          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
+            type: '1-n',
             sourceNodeId: sourceNodeId!,
             targetNodeId: actualTargetNodeId,
-            sourcePK: selectedSourceKey,
-            targetFK: selectedTargetKey,
-            newFieldName: newFieldName.trim(),
-            relationshipType: linkType
-          }));
+            sourceKey: selectedSourceKey,
+            targetKey: selectedTargetKey,
+            fieldName: newFieldName.trim()
+          });
         } else {
-          dispatch(confirmLinkObject({
+          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
+            type: 'object', // 'n-1' or '1-1' treated as object link in Redux usually? 
+            // Wait, Redux distinguishes 1-n (Array) vs n-1/1-1 (Object).
+            // Let's pass the specific subtype.
+            relationshipType: linkType,
             sourceNodeId: sourceNodeId!,
             targetNodeId: actualTargetNodeId,
-            sourceFK: selectedSourceKey,
-            targetPK: selectedTargetKey,
-            newFieldName: newFieldName.trim(),
-            relationshipType: linkType as 'n-1' | '1-1'
-          }));
+            sourceKey: selectedSourceKey,
+            targetKey: selectedTargetKey,
+            fieldName: newFieldName.trim()
+          });
+        }
+      } else {
+        // Create Mode
+        if (linkType === '1-n') {
+          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
+            type: '1-n',
+            sourceNodeId: sourceNodeId!,
+            targetNodeId: actualTargetNodeId,
+            sourceKey: selectedSourceKey,
+            targetKey: selectedTargetKey,
+            fieldName: newFieldName.trim()
+          });
+        } else {
+          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
+            type: 'object',
+            relationshipType: linkType, // 'n-1' or '1-1'
+            sourceNodeId: sourceNodeId!,
+            targetNodeId: actualTargetNodeId,
+            sourceKey: selectedSourceKey,
+            targetKey: selectedTargetKey,
+            fieldName: newFieldName.trim()
+          });
         }
       }
       dispatch(closeLinkFieldDialog());

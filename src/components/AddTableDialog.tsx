@@ -11,7 +11,10 @@ import { Input } from '@/components/ui/input';
 import { Plus, Trash2, Database, LayoutGrid, FileJson, Download } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import { addTable, addEdge } from '@/store/slices/schemaSlice';
+import { ActionCreators } from 'redux-undo';
+import { schemaEventBus } from '@/events/eventBus';
+import { SchemaEvents } from '@/events/schemaEvents';
+import { addEdge } from '@/store/slices/schemaSlice';
 import { addVisibleNodeId, setAddTableDialogOpen } from '@/store/slices/uiSlice';
 import {
     setMode, setSearchQuery, setApiUrl, setIsFetching, setTableName, setDisplayLabel,
@@ -69,12 +72,12 @@ export function AddTableDialog() {
     const handleJsonImport = (nodes: any[], edges: any[]) => {
         // Dispatch actions to add nodes and edges
         nodes.forEach(node => {
-            dispatch(addTable({
+            schemaEventBus.emit(SchemaEvents.TABLE_ADD, {
                 id: node.id,
                 name: node.data.label,
                 tableName: node.data.tableName,
                 columns: node.data.columns
-            }));
+            });
             dispatch(addVisibleNodeId(node.id));
         });
 
@@ -92,7 +95,7 @@ export function AddTableDialog() {
             // Generate manual ID
             const newId = `table-${Date.now()}`;
 
-            dispatch(addTable({
+            schemaEventBus.emit(SchemaEvents.TABLE_ADD, {
                 id: newId,
                 name: displayLabel, // Display label
                 tableName: tableName, // Actual DB table name
@@ -102,7 +105,7 @@ export function AddTableDialog() {
                     isNotNull: false,
                     isVirtual: false
                 }))
-            }));
+            });
             dispatch(addVisibleNodeId(newId));
 
             // Reset
@@ -118,12 +121,12 @@ export function AddTableDialog() {
                 const newId = `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
                 const newDisplayLabel = instanceCount > 0 ? `${template.name} (${instanceCount + 1})` : template.name;
 
-                dispatch(addTable({
+                schemaEventBus.emit(SchemaEvents.TABLE_ADD, {
                     id: newId,
                     name: newDisplayLabel,
                     tableName: template.tableName || template.name.toLowerCase().replace(/\s+/g, '_'),
                     columns: template.columns.map(c => ({ ...c, visible: true, isVirtual: false }))
-                }));
+                });
                 dispatch(addVisibleNodeId(newId));
             }
         }
