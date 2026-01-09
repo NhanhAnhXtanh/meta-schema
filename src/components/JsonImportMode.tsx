@@ -125,19 +125,84 @@ export function JsonImportMode({ onImport }: JsonImportModeProps) {
                     </div>
 
                     <div className="bg-gray-50 rounded-lg p-4 mb-4 max-h-64 overflow-y-auto">
-                        <h5 className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                            Danh sách bảng sẽ được tạo:
-                        </h5>
-                        <div className="space-y-1">
-                            {previewData.collections.map((col: any, idx: number) => (
-                                <div key={idx} className="bg-white rounded px-3 py-2 text-sm">
-                                    <div className="font-medium text-gray-900">{col.displayName}</div>
-                                    <div className="text-xs text-gray-500">
-                                        Table: {col.name} • {col.instances?.length || 1} instance(s)
-                                    </div>
+                        {(() => {
+                            const linkedCollections: any[] = [];
+                            const independentCollections: any[] = [];
+
+                            previewData.collections.forEach((col: any) => {
+                                // Find instances of this collection
+                                const instanceIds = previewData.nodes
+                                    .filter((n: any) => n.data.tableName === col.name)
+                                    .map((n: any) => n.id);
+
+                                // Check if any instance participates in an edge
+                                const isLinked = previewData.edges.some((e: any) =>
+                                    instanceIds.includes(e.source) || instanceIds.includes(e.target)
+                                );
+
+                                if (isLinked) {
+                                    linkedCollections.push(col);
+                                } else {
+                                    independentCollections.push(col);
+                                }
+                            });
+
+                            return (
+                                <div className="space-y-4">
+                                    {/* Group 1: Linked Tables */}
+                                    {linkedCollections.length > 0 && (
+                                        <div>
+                                            <h5 className="flex items-center gap-2 text-xs font-semibold text-blue-600 uppercase mb-2">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                                                Bảng có mối quan hệ ({linkedCollections.length})
+                                            </h5>
+                                            <div className="space-y-1 pl-3 border-l-2 border-blue-100">
+                                                {linkedCollections.map((col: any, idx: number) => (
+                                                    <div key={`linked-${idx}`} className="bg-white rounded px-3 py-2 text-sm shadow-sm flex justify-between items-center group">
+                                                        <div>
+                                                            <div className="font-medium text-gray-900 group-hover:text-blue-600 transition-colors">
+                                                                {col.displayName}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500">
+                                                                Type: {col.name}
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">
+                                                            {col.instances?.length || 1} instance(s)
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Group 2: Independent Tables */}
+                                    {independentCollections.length > 0 && (
+                                        <div>
+                                            <h5 className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase mb-2 mt-4">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+                                                Bảng độc lập ({independentCollections.length})
+                                            </h5>
+                                            <div className="space-y-1 pl-3 border-l-2 border-gray-200">
+                                                {independentCollections.map((col: any, idx: number) => (
+                                                    <div key={`indep-${idx}`} className="bg-white rounded px-3 py-2 text-sm border border-gray-100 opacity-80 hover:opacity-100 transition-opacity">
+                                                        <div className="flex justify-between items-center">
+                                                            <div>
+                                                                <div className="font-medium text-gray-700">{col.displayName}</div>
+                                                                <div className="text-xs text-gray-400">Type: {col.name}</div>
+                                                            </div>
+                                                            <div className="text-xs font-mono bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                                                                {col.instances?.length || 1} instance(s)
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })()}
                     </div>
 
                     <div className="flex gap-2">

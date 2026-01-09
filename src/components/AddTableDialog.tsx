@@ -192,7 +192,7 @@ export function AddTableDialog({ open, onOpenChange }: AddTableDialogProps) {
                             mode === 'json' ? "bg-white text-blue-600 shadow-sm" : "text-gray-500 hover:text-gray-700"
                         )}
                     >
-                        <FileJson className="w-4 h-4" /> Import JSON
+                        <FileJson className="w-4 h-4" /> Import schema
                     </button>
                     <button
                         onClick={() => setMode('export')}

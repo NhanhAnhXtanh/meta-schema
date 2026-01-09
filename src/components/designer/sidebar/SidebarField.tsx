@@ -1,5 +1,5 @@
 import React, { useState, memo, useEffect } from 'react';
-import { GripVertical, Key, Link2, Trash2, ChevronDown, ChevronRight, Check, Plus, Edit2 } from 'lucide-react';
+import { GripVertical, Trash2, ChevronDown, ChevronRight, Check, Edit2, MoreVertical } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TableColumn } from '@/types/schema';
@@ -16,6 +16,13 @@ import {
     DialogTitle,
     DialogDescription,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+    DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 
 interface SidebarFieldProps {
     nodeId: string;
@@ -246,43 +253,35 @@ const SidebarFieldBase = ({
                         </div>
                     )}
 
-                    {/* 4. KEY ATTRIBUTES Toggle (Hidden if ReadOnly or NOT VIRTUAL) */}
-                    {!isReadOnly && field.isVirtual && (
-                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-1 ml-1 shrink-0">
-                            <button
-                                onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }))}
-                                className={cn(
-                                    "w-5 h-5 flex items-center justify-center rounded text-[8px] font-bold transition-all",
-                                    field.isPrimaryKey ? "bg-yellow-100 text-yellow-700 ring-1 ring-yellow-300" : "text-gray-300 hover:text-gray-500"
-                                )}
-                                title="Primary Key (PK)"
-                            >PK</button>
-                            <button
-                                onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }))}
-                                className={cn(
-                                    "w-5 h-5 flex items-center justify-center rounded text-[8px] font-bold transition-all",
-                                    field.isForeignKey ? "bg-sky-100 text-sky-700 ring-1 ring-sky-300" : "text-gray-300 hover:text-gray-500"
-                                )}
-                                title="Foreign Key (FK)"
-                            >FK</button>
-                        </div>
-                    )}
-
-                    {/* Show PK/FK Badges (Read-Only) if not editable - Compact Version */}
-                    {(!field.isVirtual || isReadOnly) && (field.isPrimaryKey || field.isForeignKey) && (
-                        <div className="flex items-center gap-0.5 border-l border-gray-200 pl-1 ml-1 shrink-0">
-                            {field.isPrimaryKey && <span className="bg-yellow-100 text-yellow-700 text-[8px] font-bold px-1 rounded">PK</span>}
-                            {field.isForeignKey && <span className="bg-sky-100 text-sky-700 text-[8px] font-bold px-1 rounded">FK</span>}
-                        </div>
-                    )}
-
                 </div>
 
-                {/* Action Buttons (Edit/Delete) - Hidden if ReadOnly */}
+                {/* 4. ACTIONS DROPDOWN (Fixed at end) */}
                 {!isReadOnly && field.isVirtual && (
-                    <>
-                        <button
-                            onClick={() => {
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="h-6 w-6 flex items-center justify-center rounded-md hover:bg-gray-200 text-gray-500 transition-colors ml-1 shrink-0">
+                                <MoreVertical className="w-4 h-4" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isPrimaryKey: !field.isPrimaryKey } }))}>
+                                <div className="flex items-center gap-2 w-full">
+                                    <div className={cn("w-4 h-4 flex items-center justify-center rounded text-[8px] font-bold border",
+                                        field.isPrimaryKey ? "bg-yellow-100 border-yellow-300 text-yellow-700" : "bg-gray-50 border-gray-200 text-gray-400")}>PK</div>
+                                    <span>Primary Key</span>
+                                    {field.isPrimaryKey && <Check className="w-3 h-3 ml-auto text-blue-600" />}
+                                </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => dispatch(updateField({ nodeId, fieldIndex: index, updates: { isForeignKey: !field.isForeignKey } }))}>
+                                <div className="flex items-center gap-2 w-full">
+                                    <div className={cn("w-4 h-4 flex items-center justify-center rounded text-[8px] font-bold border",
+                                        field.isForeignKey ? "bg-sky-100 border-sky-300 text-sky-700" : "bg-gray-50 border-gray-200 text-gray-400")}>FK</div>
+                                    <span>Foreign Key</span>
+                                    {field.isForeignKey && <Check className="w-3 h-3 ml-auto text-blue-600" />}
+                                </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => {
                                 let initialValues = null;
                                 // Case 1: Virtual Field (Array 1-n)
                                 if (field.isVirtual || field.type === 'array') {
@@ -336,24 +335,17 @@ const SidebarFieldBase = ({
                                         initialValues
                                     }));
                                 }
-                            }}
-                            className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-                            title={field.isVirtual ? "Edit Field Configuration" : "Connect to Table"}
-                        >
-                            {field.isVirtual ? <Edit2 className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
-                        </button>
-
-                        {/* DELETE BUTTON: ONLY FOR VIRTUAL FIELDS */}
-                        {field.isVirtual && (
-                            <button
-                                onClick={() => setShowDeleteDialog(true)}
-                                className="h-7 w-7 flex items-center justify-center rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                title="Delete Field"
-                            >
-                                <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                        )}
-                    </>
+                            }}>
+                                <Edit2 className="w-4 h-4 mr-2" />
+                                <span>Chỉnh sửa liên kết</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setShowDeleteDialog(true)} className="text-red-600 focus:text-red-700 focus:bg-red-50">
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                <span>Xóa trường</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 )}
 
             </div>
