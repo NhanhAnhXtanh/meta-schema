@@ -109,9 +109,8 @@ const SidebarFieldBase = ({
         const edge = edges.find(e => e.source === nodeId && e.sourceHandle === field.name);
         if (edge) targetNodeId = edge.target;
     } else if (field.type === 'object') {
-        // Object (source -> target via data.objectFieldName edge)
-        // Edge logic in confirmLinkObject: data: { objectFieldName: field.name }
-        const edge = edges.find(e => e.source === nodeId && e.data?.objectFieldName === field.name);
+        // Object (source -> target via sourceHandle which is now the field name)
+        const edge = edges.find(e => e.source === nodeId && e.sourceHandle === field.name);
         if (edge) targetNodeId = edge.target;
     }
 

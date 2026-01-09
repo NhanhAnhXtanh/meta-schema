@@ -367,7 +367,7 @@ const schemaSlice = createSlice({
             // Add new field to source node
             const newField: TableColumn = {
                 name: newFieldName,
-                type: 'varchar',
+                type: 'array',
                 visible: true,
                 isVirtual: true,
                 isPrimaryKey: false, // Fix: Virtual field is not PK
@@ -524,6 +524,7 @@ const schemaSlice = createSlice({
                     name: newFieldName,
                     type: 'object',
                     visible: true,
+                    isVirtual: true,
                     isPrimaryKey: false,
                     isForeignKey: false,
                     isNotNull: false,
