@@ -143,10 +143,10 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
                   <span className="text-green-600">→</span>
                   <span className="text-green-600 font-medium">{column.linkedPrimaryKeyField}</span>
                 </span>
-              ) : column.type === 'object' && column.primaryKeyField ? (
+              ) : column.type === 'object' && (column.linkedForeignKeyField || column.primaryKeyField) ? (
                 <span className="text-gray-500 text-xs flex items-center gap-1 pointer-events-none">
-                  <span className="text-purple-600">→</span>
-                  <span className="text-purple-600">{column.primaryKeyField}</span>
+                  <span className="text-violet-600">→</span>
+                  <span className="text-violet-600 font-medium">{column.linkedForeignKeyField || column.primaryKeyField}</span>
                 </span>
               ) : (
                 <span className="text-gray-500 text-xs pointer-events-none">{column.type}</span>
@@ -170,16 +170,9 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
                   </span>
                 )}
                 {column.type === 'object' && (
-                  <>
-                    <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-violet-100 text-violet-700 border border-violet-200/50 rounded shadow-sm font-bold select-none" title="Object">
-                      O
-                    </span>
-                    {column.primaryKeyField && (
-                      <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-amber-100 text-amber-700 border border-amber-200/50 rounded shadow-sm font-bold select-none" title="Linked Primary Key">
-                        PK
-                      </span>
-                    )}
-                  </>
+                  <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-violet-100 text-violet-700 border border-violet-200/50 rounded shadow-sm font-bold select-none" title="Object">
+                    O
+                  </span>
                 )}
                 {column.type === 'array' && (
                   <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 text-[10px] bg-orange-100 text-orange-700 border border-orange-200/50 rounded shadow-sm font-bold select-none" title="Array">

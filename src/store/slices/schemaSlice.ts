@@ -372,8 +372,22 @@ const schemaSlice = createSlice({
                 isVirtual: true,
                 isPrimaryKey: false, // Fix: Virtual field is not PK
                 linkedPrimaryKeyField: sourcePK,
+                linkedForeignKeyField: targetFK,
             };
             sourceNode.data.columns.push(newField);
+
+            // Clean up: Remove FK from source if it was previously an Object relationship
+            const sourcePKColumn = sourceNode.data.columns.find(c => c.name === sourcePK);
+            if (sourcePKColumn && sourcePKColumn.isForeignKey) {
+                // Check if this FK is still used by other edges
+                const isStillUsed = state.edges.some(e =>
+                    (e.source === sourceNodeId && e.data?.sourceFK === sourcePK) ||
+                    (e.target === sourceNodeId && e.targetHandle === sourcePK)
+                );
+                if (!isStillUsed) {
+                    sourcePKColumn.isForeignKey = false;
+                }
+            }
 
             // Mark target field as FK
             const targetColumn = targetNode.data.columns.find(c => c.name === targetFK);
@@ -429,12 +443,14 @@ const schemaSlice = createSlice({
                     field.isVirtual = true;
                     field.type = 'varchar'; // or 'array'
                     field.linkedPrimaryKeyField = sourceKey;
+                    field.linkedForeignKeyField = targetKey;
                     delete field.primaryKeyField; // Clean up N:1 props
                 } else {
                     // Object (N:1)
                     field.isVirtual = false;
                     field.type = 'object';
                     field.primaryKeyField = targetKey;
+                    field.linkedForeignKeyField = sourceKey;
                     field.relationshipType = relationshipType;
                     delete field.linkedPrimaryKeyField; // Clean up 1:N props
                 }
@@ -512,8 +528,22 @@ const schemaSlice = createSlice({
                     isForeignKey: false,
                     isNotNull: false,
                     primaryKeyField: targetPK, // Store generic PK ref
+                    linkedForeignKeyField: sourceFK,
                     relationshipType: relationshipType || 'n-1'
                 });
+
+                // Clean up: Remove FK from target if it was previously an Array relationship
+                const targetPKColumn = targetNode.data.columns.find(c => c.name === targetPK);
+                if (targetPKColumn && targetPKColumn.isForeignKey) {
+                    // Check if this FK is still used by other edges
+                    const isStillUsed = state.edges.some(e =>
+                        (e.target === targetNodeId && e.targetHandle === targetPK) ||
+                        (e.source === targetNodeId && e.data?.sourceFK === targetPK)
+                    );
+                    if (!isStillUsed) {
+                        targetPKColumn.isForeignKey = false;
+                    }
+                }
 
                 // 2. Mark Source FK field as ForeignKey
                 const fkColumn = sourceNode.data.columns.find(c => c.name === sourceFK);
@@ -532,7 +562,7 @@ const schemaSlice = createSlice({
                         id: edgeId,
                         source: sourceNodeId,
                         target: targetNodeId,
-                        sourceHandle: sourceFK,
+                        sourceHandle: newFieldName,
                         targetHandle: targetPK,
                         type: 'relationship',
                         data: { relationshipType: relationshipType || 'n-1' }

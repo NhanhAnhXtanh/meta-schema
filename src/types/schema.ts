@@ -8,6 +8,7 @@ export interface TableColumn {
     primaryKeyField?: string; // Field làm PK cho object type
     isVirtual?: boolean; // Đánh dấu field virtual
     linkedPrimaryKeyField?: string; // Field PK mà field virtual link tới
+    linkedForeignKeyField?: string; // Field FK mà field object/array link tới
     relationshipType?: '1-n' | 'n-1' | '1-1' | 'n-n';
     children?: TableColumn[]; // Defines inline nested structure
     description?: string;

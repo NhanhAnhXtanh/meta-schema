@@ -91,43 +91,52 @@ export function RelationshipEdge({
     setValidationError(validationErrorMemo || null);
   }, [validationErrorMemo]);
 
+
+
+  // Initialize state when menu opens
   useEffect(() => {
     if (isMenuOpen) {
       setEditedFieldName(sourceHandle || '');
       setEditedTargetId(target);
-      setEditedTargetKey(targetHandle || '');
-
       const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
+
+      // Only initialize if not already set (preserve user selection during type switches)
+      // Or if this is the first open (e.g. editedSourceKey is empty)
+      // Check !isMenuOpen in deps or use a ref to track open state could work,
+      // but here we rely on the fact that we close menu on save.
+
+      let initialSourceKey = editedSourceKey;
+      let initialTargetKey = editedTargetKey;
+
+      // If keys are empty (first open), load from data
+      if (!initialSourceKey && sourceNode) {
+        const col = sourceNode.data.columns.find((c) => c.name === sourceHandle);
+        if (data?.relationshipType === '1-n') {
+          initialSourceKey = col?.linkedPrimaryKeyField || sourceNode.data.columns.find(c => c.isPrimaryKey)?.name || '';
+          initialTargetKey = targetHandle || '';
+        } else {
+          initialSourceKey = data?.sourceFK || col?.linkedForeignKeyField || '';
+          initialTargetKey = targetHandle || '';
+        }
+        setEditedSourceKey(initialSourceKey);
+        setEditedTargetKey(initialTargetKey);
+      }
+
+      // Initialize Virtual state only once
       if (sourceNode) {
         const col = sourceNode.data.columns.find((c) => c.name === sourceHandle);
-        // Initialize Data Type based on actual column
-        if (col) {
+        if (col && isVirtual === undefined) {
           setIsVirtual(!!col.isVirtual);
         }
       }
-    }
-  }, [isMenuOpen, sourceHandle, target, targetHandle, getNode, source]);
 
-  useEffect(() => {
-    if (isMenuOpen) {
-      const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
-      if (sourceNode) {
-        const col = sourceNode.data.columns.find((c) => c.name === sourceHandle);
-
-        let val = '';
-        if (relationshipType === '1-n') {
-          val = col?.linkedPrimaryKeyField || '';
-        } else {
-          val = data?.sourceFK || '';
-        }
-        if (!val) {
-          val = col?.linkedPrimaryKeyField || data?.sourceFK ||
-            (col?.isForeignKey ? col.name : '') || '';
-        }
-        setEditedSourceKey(val);
+      // Initialize Virtual state
+      const col = sourceNode?.data.columns.find((c) => c.name === sourceHandle);
+      if (col) {
+        setIsVirtual(!!col.isVirtual);
       }
     }
-  }, [isMenuOpen, relationshipType, sourceHandle, data, getNode, source]);
+  }, [isMenuOpen, source, target, sourceHandle, targetHandle, data, getNode]); // Removed relationshipType dependency
 
   // Handle Save Inline
   const handleSaveInline = () => {
@@ -172,8 +181,12 @@ export function RelationshipEdge({
       }));
     }
 
-    // 2. Create new configuration
+
+    // 2. Create new configuration based on relationship type
+    // confirmLinkField and confirmLinkObject will handle FK marking automatically
+
     if (isVirtual) {
+      // Array (1:N) - Source has PK, Target has FK
       dispatch(confirmLinkField({
         sourceNodeId: source,
         targetNodeId: editedTargetId,
@@ -183,12 +196,13 @@ export function RelationshipEdge({
         relationshipType: relationshipType
       }));
     } else {
-      // n-1 or 1-1
+      // Object (N:1, 1:1) - Source has FK, Target has PK
+      // IMPORTANT: sourceFK must be a real FK column in source table, not the object field itself
       dispatch(confirmLinkObject({
         sourceNodeId: source,
         targetNodeId: editedTargetId,
-        sourceFK: editedSourceKey,
-        targetPK: editedTargetKey,
+        sourceFK: editedSourceKey,  // This should be the FK column name in source table
+        targetPK: editedTargetKey,   // This should be the PK column name in target table
         newFieldName: editedFieldName,
         relationshipType: relationshipType as 'n-1' | '1-1'
       }));
@@ -244,24 +258,8 @@ export function RelationshipEdge({
     if (newType === relationshipType) return;
     setRelationshipType(newType);
 
-    // Smart auto-fill keys based on new type constraints
-    const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
-    const targetNode = nodes.find(n => n.id === editedTargetId);
-
-    if (newType === '1-n') {
-      // 1-n: Source is PK, Target is FK
-      // Find PK in source
-      const sourcePK = sourceNode?.data.columns.find(c => c.isPrimaryKey)?.name;
-      if (sourcePK) setEditedSourceKey(sourcePK);
-
-      // Reset Target key if it looks like a PK (usually 'id')
-      // or keep it if it looks like an FK
-    } else {
-      // n-1 or 1-1: Source is FK, Target is PK
-      // Find PK in target
-      const targetPK = targetNode?.data.columns.find(c => c.isPrimaryKey)?.name;
-      if (targetPK) setEditedTargetKey(targetPK);
-    }
+    // User requested to keep existing data when switching types
+    // So we do NOT auto-reset or guess keys here anymore.
   };
 
   const handlePathTypeChange = (type: EdgePathType) => {

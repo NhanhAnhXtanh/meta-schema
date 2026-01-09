@@ -8,6 +8,7 @@ export interface TableColumn {
     visible?: boolean;
     isVirtual?: boolean;
     linkedPrimaryKeyField?: string;
+    linkedForeignKeyField?: string;
     primaryKeyField?: string;
     relationshipType?: '1-n' | 'n-1' | '1-1' | 'n-n';
 }
