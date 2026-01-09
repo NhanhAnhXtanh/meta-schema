@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Plus, Copy, Trash2, Edit2 } from 'lucide-react';
-import { openLinkFieldDialog, addVisibleNodeId } from '@/store/slices/uiSlice';
+
 import { schemaEventBus } from '@/events/eventBus';
 import { SchemaEvents } from '@/events/schemaEvents';
 import { THEME } from '@/constants/theme';
@@ -26,7 +26,7 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
   const headerColor = data.color || THEME.NODE.HEADER_BG_DEFAULT;
 
   const handleAddField = () => {
-    dispatch(openLinkFieldDialog(id));
+    schemaEventBus.emit(SchemaEvents.LINK_FIELD_OPEN, { sourceNodeId: id });
   };
 
   const handleClone = () => {
@@ -37,7 +37,6 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
       tableName: data.tableName || data.label,
       columns: data.columns
     });
-    dispatch(addVisibleNodeId(newId));
   };
 
   const handleSaveRename = () => {
@@ -121,13 +120,12 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
                 column.isVirtual && 'bg-green-50 border-l-2 border-l-green-400'
               )}
             >
-              {/* Target Handle - Invisible Anchor */}
+              {/* Target Handle - Left Side */}
               <Handle
                 type="target"
                 position={Position.Left}
                 id={column.name}
-                isConnectable={false}
-                className="!w-0 !h-0 !min-w-0 !min-h-0 !opacity-0 !border-0 !bg-transparent pointer-events-none"
+                className="!w-2 !h-2 !min-w-0 !min-h-0 !border-0 !bg-gray-400/50 opacity-0 group-hover/node:opacity-100 hover:!bg-blue-500 hover:!w-3 hover:!h-3 transition-all"
                 style={{
                   top: '50%',
                   transform: 'translateY(-50%)',
@@ -181,13 +179,12 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
                 )}
               </div>
 
-              {/* Source Handle - Invisible Anchor */}
+              {/* Source Handle - Right Side */}
               <Handle
                 type="source"
                 position={Position.Right}
                 id={column.name}
-                isConnectable={false}
-                className="!w-0 !h-0 !min-w-0 !min-h-0 !opacity-0 !border-0 !bg-transparent pointer-events-none"
+                className="!w-2 !h-2 !min-w-0 !min-h-0 !border-0 !bg-gray-400/50 opacity-0 group-hover/node:opacity-100 hover:!bg-blue-500 hover:!w-3 hover:!h-3 transition-all"
                 style={{
                   top: '50%',
                   transform: 'translateY(-50%)',
@@ -208,14 +205,13 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
             </button>
           </div>
         </div>
-        {/* Object Target Handle - Invisible Anchor */}
+        {/* Object Target Handle - Bottom */}
         <div className="relative border-t border-gray-200 py-0 h-0">
           <Handle
             type="target"
             position={Position.Bottom}
             id="object-target"
-            isConnectable={false}
-            className="!w-0 !h-0 !min-w-0 !min-h-0 !opacity-0 !border-0 !bg-transparent pointer-events-none"
+            className="!w-2 !h-2 !min-w-0 !min-h-0 !border-0 !bg-gray-400/50 opacity-0 group-hover/node:opacity-100 hover:!bg-blue-500 hover:!w-3 hover:!h-3 transition-all"
             style={{
               left: '50%',
               transform: 'translateX(-50%)',

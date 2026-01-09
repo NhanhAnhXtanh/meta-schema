@@ -113,6 +113,7 @@ const schemaSlice = createSlice({
                     label: name,
                     columns: columns.map(c => ({ ...c, visible: true })),
                     color: defaultColor,
+                    isActive: true,
                     _version: Date.now()
                 }
             };

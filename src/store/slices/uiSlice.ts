@@ -2,8 +2,6 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface UiState {
     sidebarOpen: boolean;
-    visibleNodeIds: string[]; // IDs of nodes visible in the sidebar tree or filtered view
-    selectedNodeId: string | null;
 
     // Dialog States
     isAddTableDialogOpen: boolean;
@@ -25,8 +23,6 @@ interface UiState {
 
 const initialState: UiState = {
     sidebarOpen: true,
-    visibleNodeIds: ['1'], // Initially just the root node '1' as per original App.tsx
-    selectedNodeId: null,
     isAddTableDialogOpen: false,
     linkFieldDialog: {
         isOpen: false,
@@ -40,20 +36,6 @@ const uiSlice = createSlice({
     reducers: {
         toggleSidebar: (state) => {
             state.sidebarOpen = !state.sidebarOpen;
-        },
-        setVisibleNodeIds: (state, action: PayloadAction<string[]>) => {
-            state.visibleNodeIds = action.payload;
-        },
-        addVisibleNodeId: (state, action: PayloadAction<string>) => {
-            if (!state.visibleNodeIds.includes(action.payload)) {
-                state.visibleNodeIds.push(action.payload);
-            }
-        },
-        removeVisibleNodeId: (state, action: PayloadAction<string>) => {
-            state.visibleNodeIds = state.visibleNodeIds.filter(id => id !== action.payload);
-        },
-        setSelectedNodeId: (state, action: PayloadAction<string | null>) => {
-            state.selectedNodeId = action.payload;
         },
 
         // Dialog Actions
@@ -86,6 +68,25 @@ const uiSlice = createSlice({
             state.linkFieldDialog.initialValues = action.payload.initialValues;
         },
 
+        openLinkFieldDialogWithValues: (state, action: PayloadAction<{
+            sourceNodeId: string;
+            initialValues: {
+                targetNodeId: string;
+                sourceKey: string;
+                targetKey: string;
+                fieldName?: string;
+                linkType: '1-n' | 'n-1';
+            }
+        }>) => {
+            state.linkFieldDialog.isOpen = true;
+            state.linkFieldDialog.sourceNodeId = action.payload.sourceNodeId;
+            state.linkFieldDialog.isEditMode = false;
+            state.linkFieldDialog.initialValues = {
+                fieldName: '',
+                ...action.payload.initialValues
+            };
+        },
+
         closeLinkFieldDialog: (state) => {
             state.linkFieldDialog.isOpen = false;
             state.linkFieldDialog.sourceNodeId = null;
@@ -96,9 +97,9 @@ const uiSlice = createSlice({
 });
 
 export const {
-    toggleSidebar, setVisibleNodeIds, addVisibleNodeId, removeVisibleNodeId, setSelectedNodeId,
+    toggleSidebar,
     setAddTableDialogOpen,
-    openLinkFieldDialog, openEditLinkFieldDialog, closeLinkFieldDialog
+    openLinkFieldDialog, openEditLinkFieldDialog, openLinkFieldDialogWithValues, closeLinkFieldDialog
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

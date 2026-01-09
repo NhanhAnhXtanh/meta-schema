@@ -1,3 +1,4 @@
+import { openLinkFieldDialog } from '@/store/slices/uiSlice';
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { schemaEventBus } from '@/events/eventBus';
@@ -87,10 +88,23 @@ export function JmixDataController() {
             }
         };
 
+        const handleLinkFieldOpen = (payload: any) => {
+            dispatch(openLinkFieldDialog(payload.sourceNodeId));
+        };
+
+        const handleTableToggleVisibility = (payload: { id: string }) => {
+            const node = nodes.find(n => n.id === payload.id);
+            if (node) {
+                const current = node.data.isActive !== false;
+                dispatch(updateTable({ id: payload.id, updates: { isActive: !current } }));
+            }
+        };
+
         // Register Listeners
         schemaEventBus.on(SchemaEvents.TABLE_ADD, handleTableAdd);
         schemaEventBus.on(SchemaEvents.TABLE_UPDATE, handleTableUpdate);
         schemaEventBus.on(SchemaEvents.TABLE_DELETE, handleTableDelete);
+        schemaEventBus.on(SchemaEvents.TABLE_TOGGLE_VISIBILITY, handleTableToggleVisibility);
 
         schemaEventBus.on(SchemaEvents.FIELD_ADD, handleFieldAdd);
         schemaEventBus.on(SchemaEvents.FIELD_UPDATE, handleFieldUpdate);
@@ -102,12 +116,14 @@ export function JmixDataController() {
         schemaEventBus.on(SchemaEvents.SCHEMA_REDO, handleRedo);
         schemaEventBus.on(SchemaEvents.SCHEMA_AUTO_LAYOUT, handleAutoLayout);
         schemaEventBus.on(SchemaEvents.RELATIONSHIP_ADD, handleRelationshipAdd);
+        schemaEventBus.on(SchemaEvents.LINK_FIELD_OPEN, handleLinkFieldOpen);
 
         // Cleanup
         return () => {
             schemaEventBus.off(SchemaEvents.TABLE_ADD, handleTableAdd);
             schemaEventBus.off(SchemaEvents.TABLE_UPDATE, handleTableUpdate);
             schemaEventBus.off(SchemaEvents.TABLE_DELETE, handleTableDelete);
+            schemaEventBus.off(SchemaEvents.TABLE_TOGGLE_VISIBILITY, handleTableToggleVisibility);
 
             schemaEventBus.off(SchemaEvents.FIELD_ADD, handleFieldAdd);
             schemaEventBus.off(SchemaEvents.FIELD_UPDATE, handleFieldUpdate);
@@ -119,6 +135,7 @@ export function JmixDataController() {
             schemaEventBus.off(SchemaEvents.SCHEMA_REDO, handleRedo);
             schemaEventBus.off(SchemaEvents.SCHEMA_AUTO_LAYOUT, handleAutoLayout);
             schemaEventBus.off(SchemaEvents.RELATIONSHIP_ADD, handleRelationshipAdd);
+            schemaEventBus.off(SchemaEvents.LINK_FIELD_OPEN, handleLinkFieldOpen);
         };
     }, [dispatch, nodes]);
 

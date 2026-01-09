@@ -18,7 +18,6 @@ export function Sidebar() {
     const dispatch = useDispatch();
     const nodes = useSelector((state: RootState) => state.schema.present.nodes);
     const edges = useSelector((state: RootState) => state.schema.present.edges);
-    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
     const selectedNodeId = useSelector((state: RootState) => state.ui.selectedNodeId);
 
     // Sidebar State
@@ -36,7 +35,7 @@ export function Sidebar() {
 
     // Filter visible nodes
     // Trust Redux state for visible nodes
-    const appVisibleNodes = nodes.filter(n => visibleNodeIds.includes(n.id));
+    const appVisibleNodes = nodes.filter(n => n.data.isActive !== false);
 
     // Strict Root Logic: A node is a root if no edge points to it inside the edges list
     const rootNodes = useMemo(() => {

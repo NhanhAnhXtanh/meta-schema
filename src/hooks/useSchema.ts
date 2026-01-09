@@ -127,15 +127,4 @@ export function useFieldValidation(nodeId: string) {
     };
 }
 
-/**
- * Hook for getting visible nodes
- */
-export function useVisibleNodes() {
-    const nodes = useSelector((state: RootState) => state.schema.present.nodes);
-    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
 
-    return useMemo(() =>
-        nodes.filter(node => visibleNodeIds.includes(node.id)),
-        [nodes, visibleNodeIds]
-    );
-}

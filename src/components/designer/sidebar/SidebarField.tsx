@@ -7,8 +7,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store';
 import { updateField, toggleFieldVisibility } from '@/store/slices/schemaSlice';
 import { deleteFieldCascade } from '@/store/thunks/schemaThunks';
-import { addVisibleNodeId, removeVisibleNodeId, openEditLinkFieldDialog } from '@/store/slices/uiSlice';
+import { openEditLinkFieldDialog } from '@/store/slices/uiSlice';
 import { NestedFieldsList } from './NestedFieldsList';
+import { schemaEventBus } from '@/events/eventBus';
+import { SchemaEvents } from '@/events/schemaEvents';
 
 import {
     Dialog,
@@ -100,7 +102,6 @@ const SidebarFieldBase = ({
 
     // -- Nested Field Logic --
     const [isExpanded, setIsExpanded] = useState(false);
-    const visibleNodeIds = useSelector((state: RootState) => state.ui.visibleNodeIds);
 
     // Determine target node for nested fields
     let targetNodeId: string | null = null;
@@ -121,7 +122,7 @@ const SidebarFieldBase = ({
     const hasNestedFields = !!targetNode || hasInlineChildren;
 
     // Check if target node is visible on board
-    const isTargetVisible = targetNode ? visibleNodeIds.includes(targetNode.id) : false;
+    const isTargetVisible = targetNode ? targetNode.data.isActive !== false : false;
 
     return (
         <div className="flex flex-col">
@@ -199,17 +200,25 @@ const SidebarFieldBase = ({
                                     type="checkbox"
                                     checked={isTargetVisible}
                                     onChange={() => {
-                                        if (isTargetVisible) {
-                                            dispatch(removeVisibleNodeId(targetNode.id));
-                                        } else {
-                                            dispatch(addVisibleNodeId(targetNode.id));
-                                        }
+                                        schemaEventBus.emit(SchemaEvents.TABLE_TOGGLE_VISIBILITY, {
+                                            id: targetNode.id,
+                                            isVisible: !isTargetVisible
+                                        });
                                     }}
                                     className="w-3 h-3 cursor-pointer accent-blue-600 flex-shrink-0"
                                     title="Show/Hide Table on Board"
                                 />
                             )}
-                            <span className="text-xs text-blue-600 font-medium truncate block" onClick={() => !isTargetVisible && dispatch(addVisibleNodeId(targetNode.id))}>
+                            <span className="text-xs text-blue-600 font-medium truncate block"
+                                onClick={() => {
+                                    if (!isTargetVisible) {
+                                        schemaEventBus.emit(SchemaEvents.TABLE_TOGGLE_VISIBILITY, {
+                                            id: targetNode.id,
+                                            isVisible: true
+                                        });
+                                    }
+                                }}
+                            >
                                 : {targetNode.data.label}
                             </span>
                         </div>

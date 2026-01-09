@@ -8,8 +8,10 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@/store';
 import { updateTable, reorderFields } from '@/store/slices/schemaSlice';
 import { deleteTableCascade } from '@/store/thunks/schemaThunks';
-import { setSelectedNodeId, openLinkFieldDialog } from '@/store/slices/uiSlice';
+import { openLinkFieldDialog } from '@/store/slices/uiSlice';
 import { SidebarField } from './SidebarField';
+import { schemaEventBus } from '@/events/eventBus';
+import { SchemaEvents } from '@/events/schemaEvents';
 import {
     setEditingNodeId,
     setEditName,
@@ -42,7 +44,8 @@ interface SidebarItemProps {
 
 const SidebarItemBase = ({
     node, depth = 0, isExpanded, onToggleExpand, isSelected,
-    onDragStart, onDragOver, onDrop, isDragging, isDragOver
+    onDragStart, onDragOver, onDrop,
+    isDragging, isDragOver
 }: SidebarItemProps) => {
     const dispatch = useDispatch<AppDispatch>();
 
@@ -139,9 +142,7 @@ const SidebarItemBase = ({
                     <GripVertical className="w-4 h-4 text-gray-400 mr-2 cursor-move opacity-0 group-hover:opacity-100 transition-opacity" />
 
                     <div className="flex-1 cursor-pointer py-3 min-w-0" onClick={() => {
-                        dispatch(setSelectedNodeId(node.id));
-                        // Dispatch event to fly to node on canvas
-                        window.dispatchEvent(new CustomEvent('flyToNode', { detail: { nodeId: node.id } }));
+                        schemaEventBus.emit(SchemaEvents.TABLE_FOCUS, { nodeId: node.id });
                     }}>
                         {isEditing ? (
                             <Input

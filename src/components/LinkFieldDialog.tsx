@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+
 import {
   Dialog,
   DialogContent,
@@ -6,42 +6,25 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ValidationUtils } from '@/utils/validation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { initialNodes } from '@/data/initialSchema';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Database, Search, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store';
-import {
-  setLinkFieldTargetType,
-  setLinkFieldSelectedTargetNodeId,
-  setLinkFieldSelectedTemplateId,
-  setLinkFieldSelectedSourceKey,
-  setLinkFieldSelectedTargetKey,
-  setLinkFieldNewFieldName,
-  setLinkFieldLinkType,
-  setLinkFieldSearchQuery,
-  initializeLinkFieldState,
-  resetLinkFieldState
-} from '@/store/slices/linkFieldSlice';
-import { closeLinkFieldDialog, addVisibleNodeId } from '@/store/slices/uiSlice';
-import { SchemaEvents } from '@/events/schemaEvents';
-import { schemaEventBus } from '@/events/eventBus';
+import { useLinkFieldForm } from '@/hooks/useLinkFieldForm';
 
 export function LinkFieldDialog() {
-  const dispatch = useDispatch();
-
-  // Global State
-  const nodes = useSelector((state: RootState) => state.schema.present.nodes);
-
-  // UI Dialog State
-  const { isOpen, sourceNodeId, isEditMode, fieldIndex, initialValues } = useSelector((state: RootState) => state.ui.linkFieldDialog);
-
-  // Form State
   const {
+    // State
+    isOpen,
+    isEditMode,
+    sourceNode,
+    sourceFields,
+    targetFields,
+    validationError,
+    isFormValid,
+
+    // Form Values
     targetType,
     selectedTargetNodeId,
     selectedTemplateId,
@@ -49,272 +32,26 @@ export function LinkFieldDialog() {
     selectedTargetKey,
     newFieldName,
     linkType,
-    searchQuery
-  } = useSelector((state: RootState) => state.linkField);
+    searchQuery,
+    selectedTargetName,
+    availableTargetNodes,
+    filteredTemplates,
+    templates,
 
-  // Derived State
-  const sourceNode = useMemo(() => nodes.find(n => n.id === sourceNodeId), [nodes, sourceNodeId]);
-  const allNodes = nodes;
+    // Handlers
+    handleConfirm,
+    handleCancel,
 
-  // Initialize Form
-  useEffect(() => {
-    if (isOpen) {
-      if (initialValues) {
-        dispatch(initializeLinkFieldState({
-          targetType: 'existing',
-          selectedTargetNodeId: initialValues.targetNodeId,
-          selectedSourceKey: initialValues.sourceKey,
-          selectedTargetKey: initialValues.targetKey,
-          newFieldName: initialValues.fieldName,
-          linkType: initialValues.linkType,
-          selectedTemplateId: '',
-          searchQuery: ''
-        }));
-      } else {
-        // Reset for create mode
-        dispatch(resetLinkFieldState());
-      }
-    }
-  }, [isOpen, initialValues, dispatch]);
-
-
-  // Templates from data
-  const templates = useMemo(() => {
-    return initialNodes.map(node => ({
-      id: node.id,
-      name: node.data.label,
-      tableName: node.data.tableName,
-      columns: node.data.columns
-    }));
-  }, []);
-
-  // Filter templates
-  const filteredTemplates = useMemo(() => {
-    return templates.filter(t =>
-    (t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.tableName.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  }, [templates, searchQuery]);
-
-  // Filter existing nodes
-  const availableTargetNodes = useMemo(() => {
-    if (!sourceNode) return [];
-    return allNodes;
-  }, [allNodes, sourceNode]);
-
-  // Source Fields
-  const sourceFields = useMemo(() => {
-    if (!sourceNode) return [];
-    return sourceNode.data.columns.filter((col) => col.visible !== false);
-  }, [sourceNode]);
-
-  // Target Fields
-  const targetFields = useMemo(() => {
-    if (targetType === 'existing') {
-      if (!selectedTargetNodeId) return [];
-      const targetNode = availableTargetNodes.find((n) => n.id === selectedTargetNodeId);
-      if (!targetNode) return [];
-      return targetNode.data.columns.filter((col) => col.visible !== false);
-    } else {
-      if (!selectedTemplateId) return [];
-      const template = templates.find(t => t.id === selectedTemplateId);
-      if (!template) return [];
-      return template.columns;
-    }
-  }, [selectedTargetNodeId, selectedTemplateId, availableTargetNodes, templates, targetType]);
-
-  const selectedTargetName = useMemo(() => {
-    if (targetType === 'existing') {
-      return availableTargetNodes.find(n => n.id === selectedTargetNodeId)?.data.label;
-    }
-    return templates.find(t => t.id === selectedTemplateId)?.name;
-  }, [targetType, selectedTargetNodeId, selectedTemplateId, availableTargetNodes, templates]);
-
-  // Validation
-  const validationError = useMemo(() => {
-    if (!selectedSourceKey || !selectedTargetKey) return null;
-    const finalTargetId = targetType === 'existing' ? selectedTargetNodeId : selectedTemplateId;
-    if (!finalTargetId) return null;
-
-    const sourceCol = sourceNode?.data.columns.find(c => c.name === selectedSourceKey);
-    const targetCol = targetFields.find(c => c.name === selectedTargetKey);
-
-    if (sourceCol && targetCol) {
-      const validation = ValidationUtils.validateRelationshipTypes(
-        sourceCol.type,
-        targetCol.type,
-        sourceCol.name,
-        targetCol.name
-      );
-      if (!validation.valid) return validation.error;
-    }
-
-    // New Validation: Prevent linking to Array/Object types
-    if (selectedSourceKey) {
-      const sourceField = sourceFields.find(f => f.name === selectedSourceKey);
-      if (sourceField && (sourceField.type === 'array' || sourceField.type === 'object')) {
-        return `Không thể liên kết tới trường '${selectedSourceKey}' vì nó có kiểu '${sourceField.type}'. Chỉ cho phép các kiểu dữ liệu nguyên thủy.`;
-      }
-    }
-
-    if (selectedTargetKey) {
-      const targetField = targetFields.find(f => f.name === selectedTargetKey);
-      if (targetField && (targetField.type === 'array' || targetField.type === 'object')) {
-        return `Không thể liên kết tới trường '${selectedTargetKey}' vì nó có kiểu '${targetField.type}'. Chỉ cho phép các kiểu dữ liệu nguyên thủy.`;
-      }
-    }
-
-    return null;
-  }, [selectedSourceKey, selectedTargetKey, selectedTargetNodeId, selectedTemplateId, sourceNode, targetFields, targetType]);
-
-  const isFormValid =
-    (targetType === 'existing' ? selectedTargetNodeId : selectedTemplateId) &&
-    selectedSourceKey &&
-    selectedTargetKey &&
-    newFieldName.trim() &&
-    !validationError;
-
-  const handleConfirm = () => {
-    // Logic from SchemaDialogs transferred here
-    if (!sourceNodeId) return;
-
-    const finalTargetId = targetType === 'existing' ? selectedTargetNodeId : selectedTemplateId;
-    const isNewInstance = targetType === 'template';
-
-    if (finalTargetId && selectedSourceKey && selectedTargetKey && newFieldName.trim()) {
-
-      let actualTargetNodeId = selectedTargetNodeId;
-
-      // 1. If Edit Mode, delete field first to cleanup old definition
-      if (isEditMode && fieldIndex !== undefined) {
-        if (isEditMode && fieldIndex !== undefined) {
-          schemaEventBus.emit(SchemaEvents.FIELD_DELETE, {
-            nodeId: sourceNodeId,
-            fieldIndex: fieldIndex,
-            skipRecursive: true
-          });
-        }
-      }
-
-      // 2. If it's a new instance, create it first
-      if (isNewInstance && selectedTemplateId) {
-        const template = initialNodes.find(n => n.id === selectedTemplateId);
-        const sNode = nodes.find(n => n.id === sourceNodeId);
-
-        if (template && sNode) {
-          const newId = `table-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-          const existingCount = nodes.filter(n => n.data.tableName === template.data.tableName).length;
-          const label = existingCount > 0 ? `${template.data.label} (${existingCount + 1})` : template.data.label;
-
-          const ROW_HEIGHT = 37;
-          const sourceCols = sNode.data.columns.filter((c: any) => c.visible !== false);
-          const sourceIndex = sourceCols.length;
-          const targetCols = template.data.columns.filter((c: any) => c.visible !== false);
-          const targetIndex = targetCols.findIndex((c: any) => c.name === selectedTargetKey);
-
-          let position = { x: sNode.position.x + 600, y: sNode.position.y };
-
-          if (targetIndex !== -1) {
-            const yDiff = (sourceIndex - targetIndex) * ROW_HEIGHT;
-            position.y = sNode.position.y + yDiff;
-          }
-
-          const isOccupied = (x: number, y: number) => {
-            return nodes.some(n =>
-              Math.abs(n.position.x - x) < 100 &&
-              Math.abs(n.position.y - y) < 100
-            );
-          };
-
-          let attempts = 0;
-          while (isOccupied(position.x, position.y) && attempts < 5) {
-            position.y += 100;
-            attempts++;
-          }
-
-          schemaEventBus.emit(SchemaEvents.TABLE_ADD, {
-            id: newId,
-            name: label,
-            tableName: template.data.tableName,
-            columns: template.data.columns.map(c => ({ ...c, isVirtual: false })),
-            position
-          });
-          dispatch(addVisibleNodeId(newId));
-          actualTargetNodeId = newId;
-        }
-      }
-
-      // 3. Add Relationship
-      if (isEditMode) {
-        // We don't have a direct UPDATE_LINK event yet, but we can simulate it by delete + add (which we sort of did above by deleting).
-        // However, wait, deleteField above is async? No, events are emitted.
-        // Actually, let's look at schemaEvents.
-        // We might need a SCHEMA_LINK_CONNECT event which handles both types.
-        // Or specific events like LINK_CONFIRM_1N, LINK_CONFIRM_OBJECT.
-        // Let's check schemaEvents.ts content later if needed, but for now assuming we need to add new events or reuse existing logic.
-        // Since JmixDataController handles logic, we should emit an event that describes the INTENT.
-
-        // Let's use a generic 'FIELD_ADD_LINK' or similar if possible.
-        // Wait, JmixDataController doesn't have listeners for detailed link logic yet?
-        // Let's check JmixDataController.tsx content first. I'll read it in next step before applying this chunk.
-        // But to save turns, I will assume I need to ADD these event handlers to JmixDataController if they don't exist.
-        // I will emit 'RELATIONSHIP_ADD' or similar.
-
-        // Actually, looking at current Redux actions: confirmLinkField, confirmLinkObject.
-        // I should emit events mapping to these.
-
-        if (linkType === '1-n') {
-          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
-            type: '1-n',
-            sourceNodeId: sourceNodeId!,
-            targetNodeId: actualTargetNodeId,
-            sourceKey: selectedSourceKey,
-            targetKey: selectedTargetKey,
-            fieldName: newFieldName.trim()
-          });
-        } else {
-          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
-            type: 'object', // 'n-1' or '1-1' treated as object link in Redux usually? 
-            // Wait, Redux distinguishes 1-n (Array) vs n-1/1-1 (Object).
-            // Let's pass the specific subtype.
-            relationshipType: linkType,
-            sourceNodeId: sourceNodeId!,
-            targetNodeId: actualTargetNodeId,
-            sourceKey: selectedSourceKey,
-            targetKey: selectedTargetKey,
-            fieldName: newFieldName.trim()
-          });
-        }
-      } else {
-        // Create Mode
-        if (linkType === '1-n') {
-          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
-            type: '1-n',
-            sourceNodeId: sourceNodeId!,
-            targetNodeId: actualTargetNodeId,
-            sourceKey: selectedSourceKey,
-            targetKey: selectedTargetKey,
-            fieldName: newFieldName.trim()
-          });
-        } else {
-          schemaEventBus.emit(SchemaEvents.RELATIONSHIP_ADD, {
-            type: 'object',
-            relationshipType: linkType, // 'n-1' or '1-1'
-            sourceNodeId: sourceNodeId!,
-            targetNodeId: actualTargetNodeId,
-            sourceKey: selectedSourceKey,
-            targetKey: selectedTargetKey,
-            fieldName: newFieldName.trim()
-          });
-        }
-      }
-      dispatch(closeLinkFieldDialog());
-    }
-  };
-
-  const handleCancel = () => {
-    dispatch(closeLinkFieldDialog());
-  };
+    // Setters
+    setLinkFieldSearchQuery,
+    setLinkFieldSelectedTemplateId,
+    setLinkFieldNewFieldName,
+    setLinkFieldLinkType,
+    setLinkFieldSelectedTargetNodeId,
+    setLinkFieldSelectedSourceKey,
+    setLinkFieldSelectedTargetKey,
+    setSelectionAction
+  } = useLinkFieldForm();
 
   if (!sourceNode) return null;
 
@@ -343,14 +80,14 @@ export function LinkFieldDialog() {
                   <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Kiểu Dữ Liệu</h3>
                   <div className="space-y-2">
                     <button
-                      onClick={() => dispatch(setLinkFieldLinkType('1-n'))}
+                      onClick={() => setLinkFieldLinkType('1-n')}
                       className={cn("w-full text-left p-3 rounded-lg border transition-all", linkType === '1-n' ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200" : "bg-gray-50 border-transparent hover:bg-gray-100")}
                     >
                       <div className={cn("font-bold text-sm mb-0.5", linkType === '1-n' ? "text-blue-700" : "text-gray-900")}>Array</div>
                       <div className="text-xs text-gray-500">Danh sách (1:N)</div>
                     </button>
                     <button
-                      onClick={() => dispatch(setLinkFieldLinkType('n-1'))}
+                      onClick={() => setLinkFieldLinkType('n-1')}
                       className={cn("w-full text-left p-3 rounded-lg border transition-all", linkType !== '1-n' ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200" : "bg-gray-50 border-transparent hover:bg-gray-100")}
                     >
                       <div className={cn("font-bold text-sm mb-0.5", linkType !== '1-n' ? "text-blue-700" : "text-gray-900")}>Object</div>
@@ -370,7 +107,7 @@ export function LinkFieldDialog() {
                     ].map(opt => (
                       <button
                         key={opt.id}
-                        onClick={() => dispatch(setLinkFieldLinkType(opt.id as any))}
+                        onClick={() => setLinkFieldLinkType(opt.id as any)}
                         className={cn(
                           "w-full flex items-center justify-between p-2 px-3 rounded-md transition-all",
                           linkType === opt.id ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-100"
@@ -397,7 +134,7 @@ export function LinkFieldDialog() {
                   <Input
                     placeholder="Tìm mẫu..."
                     value={searchQuery}
-                    onChange={(e) => dispatch(setLinkFieldSearchQuery(e.target.value))}
+                    onChange={(e) => setLinkFieldSearchQuery(e.target.value)}
                     className="pl-8 h-9 text-sm bg-white border-gray-200"
                   />
                 </div>
@@ -411,9 +148,8 @@ export function LinkFieldDialog() {
                       <button
                         key={template.id}
                         onClick={() => {
-                          dispatch(setLinkFieldSelectedTemplateId(template.id));
-                          dispatch(setLinkFieldNewFieldName(template.name.toLowerCase()));
-                          dispatch(setLinkFieldTargetType('template'));
+                          setSelectionAction({ type: 'template', id: template.id });
+                          setLinkFieldNewFieldName(template.name.toLowerCase());
                         }}
                         className={cn(
                           "w-full text-left px-3 py-2.5 rounded-lg transition-all border group",
@@ -589,10 +325,10 @@ export function LinkFieldDialog() {
                         <div className="space-y-1.5">
                           <label className="text-[10px] font-semibold text-gray-500 uppercase block">Kiểu Dữ Liệu</label>
                           <div className="flex gap-2">
-                            <button onClick={() => dispatch(setLinkFieldLinkType('1-n'))} className={cn("flex-1 py-1.5 px-3 rounded text-xs font-medium border transition-all", linkType === '1-n' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 hover:border-gray-300 text-slate-700")}>
+                            <button onClick={() => setLinkFieldLinkType('1-n')} className={cn("flex-1 py-1.5 px-3 rounded text-xs font-medium border transition-all", linkType === '1-n' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 hover:border-gray-300 text-slate-700")}>
                               Array (1:N)
                             </button>
-                            <button onClick={() => dispatch(setLinkFieldLinkType('n-1'))} className={cn("flex-1 py-1.5 px-3 rounded text-xs font-medium border transition-all", linkType !== '1-n' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 hover:border-gray-300 text-slate-700")}>
+                            <button onClick={() => setLinkFieldLinkType('n-1')} className={cn("flex-1 py-1.5 px-3 rounded text-xs font-medium border transition-all", linkType !== '1-n' ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 hover:border-gray-300 text-slate-700")}>
                               Object (N:1)
                             </button>
                           </div>
@@ -602,7 +338,7 @@ export function LinkFieldDialog() {
                           <label className="text-[10px] font-semibold text-gray-500 uppercase block">Quan hệ</label>
                           <div className="flex gap-2">
                             {['1-1', '1-n', 'n-1'].map(id => (
-                              <button key={id} onClick={() => dispatch(setLinkFieldLinkType(id as any))} className={cn("flex-1 py-1.5 px-3 rounded text-xs font-medium border transition-all uppercase", linkType === id ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 hover:border-gray-300 text-slate-700")}>
+                              <button key={id} onClick={() => setLinkFieldLinkType(id as any)} className={cn("flex-1 py-1.5 px-3 rounded text-xs font-medium border transition-all uppercase", linkType === id ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 hover:border-gray-300 text-slate-700")}>
                                 {id}
                               </button>
                             ))}
@@ -620,13 +356,9 @@ export function LinkFieldDialog() {
                           onChange={(e) => {
                             const val = e.target.value;
                             if (val.startsWith('template:')) {
-                              dispatch(setLinkFieldTargetType('template'));
-                              dispatch(setLinkFieldSelectedTemplateId(val.replace('template:', '')));
-                              dispatch(setLinkFieldSelectedTargetNodeId(''));
+                              setSelectionAction({ type: 'template', id: val.replace('template:', '') });
                             } else {
-                              dispatch(setLinkFieldTargetType('existing'));
-                              dispatch(setLinkFieldSelectedTargetNodeId(val));
-                              dispatch(setLinkFieldSelectedTemplateId(''));
+                              setSelectionAction({ type: 'existing', id: val });
                             }
                           }}
                           className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm"
@@ -658,7 +390,7 @@ export function LinkFieldDialog() {
                         </label>
                         <select
                           value={selectedSourceKey}
-                          onChange={(e) => dispatch(setLinkFieldSelectedSourceKey(e.target.value))}
+                          onChange={(e) => setLinkFieldSelectedSourceKey(e.target.value)}
                           disabled={targetType === 'existing' && !isEditMode}
                           className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
                         >
@@ -682,7 +414,7 @@ export function LinkFieldDialog() {
                         </label>
                         <select
                           value={selectedTargetKey}
-                          onChange={(e) => dispatch(setLinkFieldSelectedTargetKey(e.target.value))}
+                          onChange={(e) => setLinkFieldSelectedTargetKey(e.target.value)}
                           disabled={targetType === 'existing' && !isEditMode}
                           className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
                         >
@@ -701,7 +433,7 @@ export function LinkFieldDialog() {
                       <label className="text-[10px] font-semibold text-gray-500 uppercase block">Field Name in Source</label>
                       <Input
                         value={newFieldName}
-                        onChange={(e) => dispatch(setLinkFieldNewFieldName(e.target.value))}
+                        onChange={(e) => setLinkFieldNewFieldName(e.target.value)}
                         placeholder="e.g. suppliers"
                         disabled={targetType === 'existing' && !isEditMode}
                         className="h-9 bg-white border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"

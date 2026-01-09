@@ -19,6 +19,8 @@ export const SchemaEvents = {
     SCHEMA_UNDO: 'schema:undo',
     SCHEMA_REDO: 'schema:redo',
     RELATIONSHIP_ADD: 'relationship:add',
+    LINK_FIELD_OPEN: 'link_field:open',
+    TABLE_TOGGLE_VISIBILITY: 'table:toggle_visibility',
 } as const;
 
 // Event Payload Interfaces
@@ -37,6 +39,10 @@ export interface TableDeletePayload {
 
 export interface TableFocusPayload {
     nodeId: string;
+}
+
+export interface TableToggleVisibilityPayload {
+    id: string;
 }
 
 export interface FieldAddPayload {
@@ -74,4 +80,8 @@ export interface RelationshipAddPayload {
     sourceKey: string;
     targetKey: string;
     fieldName: string;
+}
+
+export interface LinkFieldOpenPayload {
+    sourceNodeId: string;
 }
