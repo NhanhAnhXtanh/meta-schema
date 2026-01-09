@@ -120,12 +120,13 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
                 column.isVirtual && 'bg-green-50 border-l-2 border-l-green-400'
               )}
             >
-              {/* Target Handle - Left Side */}
+              {/* Target Handle - Left Side - Invisible Anchor */}
               <Handle
                 type="target"
                 position={Position.Left}
                 id={column.name}
-                className="!w-2 !h-2 !min-w-0 !min-h-0 !border-0 !bg-gray-400/50 opacity-0 group-hover/node:opacity-100 hover:!bg-blue-500 hover:!w-3 hover:!h-3 transition-all"
+                isConnectable={false}
+                className="w-1 h-1 !bg-transparent !border-0 opacity-0 pointer-events-none absolute left-0"
                 style={{
                   top: '50%',
                   transform: 'translateY(-50%)',
@@ -179,12 +180,13 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
                 )}
               </div>
 
-              {/* Source Handle - Right Side */}
+              {/* Source Handle - Right Side - Invisible Anchor */}
               <Handle
                 type="source"
                 position={Position.Right}
                 id={column.name}
-                className="!w-2 !h-2 !min-w-0 !min-h-0 !border-0 !bg-gray-400/50 opacity-0 group-hover/node:opacity-100 hover:!bg-blue-500 hover:!w-3 hover:!h-3 transition-all"
+                isConnectable={false}
+                className="w-1 h-1 !bg-transparent !border-0 opacity-0 pointer-events-none absolute right-0"
                 style={{
                   top: '50%',
                   transform: 'translateY(-50%)',
@@ -205,13 +207,14 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
             </button>
           </div>
         </div>
-        {/* Object Target Handle - Bottom */}
+        {/* Object Target Handle - Bottom - Invisible Anchor */}
         <div className="relative border-t border-gray-200 py-0 h-0">
           <Handle
             type="target"
             position={Position.Bottom}
             id="object-target"
-            className="!w-2 !h-2 !min-w-0 !min-h-0 !border-0 !bg-gray-400/50 opacity-0 group-hover/node:opacity-100 hover:!bg-blue-500 hover:!w-3 hover:!h-3 transition-all"
+            isConnectable={false}
+            className="w-1 h-1 !bg-transparent !border-0 opacity-0 pointer-events-none absolute"
             style={{
               left: '50%',
               transform: 'translateX(-50%)',
