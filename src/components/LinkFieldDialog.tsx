@@ -153,6 +153,22 @@ export function LinkFieldDialog() {
       );
       if (!validation.valid) return validation.error;
     }
+
+    // New Validation: Prevent linking to Array/Object types
+    if (selectedSourceKey) {
+      const sourceField = sourceFields.find(f => f.name === selectedSourceKey);
+      if (sourceField && (sourceField.type === 'array' || sourceField.type === 'object')) {
+        return `Không thể liên kết tới trường '${selectedSourceKey}' vì nó có kiểu '${sourceField.type}'. Chỉ cho phép các kiểu dữ liệu nguyên thủy.`;
+      }
+    }
+
+    if (selectedTargetKey) {
+      const targetField = targetFields.find(f => f.name === selectedTargetKey);
+      if (targetField && (targetField.type === 'array' || targetField.type === 'object')) {
+        return `Không thể liên kết tới trường '${selectedTargetKey}' vì nó có kiểu '${targetField.type}'. Chỉ cho phép các kiểu dữ liệu nguyên thủy.`;
+      }
+    }
+
     return null;
   }, [selectedSourceKey, selectedTargetKey, selectedTargetNodeId, selectedTemplateId, sourceNode, targetFields, targetType]);
 
@@ -367,7 +383,7 @@ export function LinkFieldDialog() {
                         key={template.id}
                         onClick={() => {
                           dispatch(setLinkFieldSelectedTemplateId(template.id));
-                          if (!newFieldName) dispatch(setLinkFieldNewFieldName(template.name.toLowerCase()));
+                          dispatch(setLinkFieldNewFieldName(template.name.toLowerCase()));
                           dispatch(setLinkFieldTargetType('template'));
                         }}
                         className={cn(

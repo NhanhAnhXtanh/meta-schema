@@ -58,15 +58,16 @@ export function RelationshipEdge({
   // Local state for inline editing
   const [editedFieldName, setEditedFieldName] = useState(sourceHandle || '');
   const [editedTargetId, setEditedTargetId] = useState(target);
-  const [editedSourceKey, setEditedSourceKey] = useState('');
-  const [editedTargetKey, setEditedTargetKey] = useState(targetHandle || '');
+  const [editedSourceKey, setEditedSourceKey] = useState<string>('');
+  const [editedTargetKey, setEditedTargetKey] = useState<string>(targetHandle || '');
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   const [isHovered, setIsHovered] = useState(false);
   const [pathType, setPathType] = useState<EdgePathType>(data?.pathType || 'bezier');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVirtual, setIsVirtual] = useState(data?.relationshipType === '1-n');
 
-  const validationError = useMemo(() => {
+  const validationErrorMemo = useMemo(() => {
     if (!editedSourceKey || !editedTargetKey || !editedTargetId) return null;
     const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
     const targetNode = nodes.find((n: Node) => n.id === editedTargetId) as Node<TableNodeData> | undefined;
@@ -85,6 +86,10 @@ export function RelationshipEdge({
     }
     return null;
   }, [editedSourceKey, editedTargetKey, editedTargetId, getNode, source, nodes]);
+
+  useEffect(() => {
+    setValidationError(validationErrorMemo || null);
+  }, [validationErrorMemo]);
 
   useEffect(() => {
     if (isMenuOpen) {
@@ -126,7 +131,30 @@ export function RelationshipEdge({
 
   // Handle Save Inline
   const handleSaveInline = () => {
+    // Validation: Check for non-primitive types
+    const sNode = getNode(source) as Node<TableNodeData> | undefined;
+    const tNode = nodes.find(n => n.id === editedTargetId);
+
+    if (sNode && editedSourceKey) {
+      const field = sNode.data.columns.find(c => c.name === editedSourceKey);
+      if (field && (field.type === 'array' || field.type === 'object')) {
+        setValidationError(`Trường nguồn '${editedSourceKey}' có kiểu ${field.type}. Chỉ được liên kết tới kiểu nguyên thủy.`);
+        return;
+      }
+    }
+
+    if (tNode && editedTargetKey) {
+      const field = tNode.data.columns.find(c => c.name === editedTargetKey);
+      if (field && (field.type === 'array' || field.type === 'object')) {
+        setValidationError(`Trường đích '${editedTargetKey}' có kiểu ${field.type}. Chỉ được liên kết tới kiểu nguyên thủy.`);
+        return;
+      }
+    }
+
     if (!editedFieldName || !editedTargetId || !editedSourceKey || !editedTargetKey) return;
+
+    // Clear validation if passed check
+    setValidationError(null);
 
     // Find original field index to delete
     const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
@@ -680,11 +708,12 @@ export function RelationshipEdge({
                           <option value="">Chọn...</option>
                           {(() => {
                             const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
-                            return sourceNode?.data.columns.map((col) => (
-                              <option key={col.name} value={col.name}>
-                                {col.name} {col.isPrimaryKey ? '(PK)' : ''}
-                              </option>
-                            )) || null;
+                            return sourceNode?.data.columns
+                              .map((col) => (
+                                <option key={col.name} value={col.name}>
+                                  {col.name} {col.isPrimaryKey ? '(PK)' : ''}
+                                </option>
+                              )) || null;
                           })()}
                         </select>
                       </div>
