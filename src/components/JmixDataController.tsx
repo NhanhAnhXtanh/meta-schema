@@ -212,13 +212,22 @@ export function JmixDataController() {
 
                     // 1. Process Tables (Detect Duplicates & Replicate)
                     const processedIds: Record<string, number> = {};
+                    const originalNames: Record<string, string> = {};
 
                     if (Array.isArray(eventData.tables)) {
                         eventData.tables.forEach((table: TableAddPayload) => {
                             const jmixId = table.id;
                             let nodeId = table.id;
+                            let tableName = table.name;
 
                             if (jmixId) {
+                                // Store original name
+                                if (originalNames[jmixId] === undefined) {
+                                    originalNames[jmixId] = table.name;
+                                } else {
+                                    tableName = originalNames[jmixId];
+                                }
+
                                 // Check duplicate count to generate Replica ID
                                 if (processedIds[jmixId] === undefined) {
                                     processedIds[jmixId] = 0;
@@ -241,6 +250,7 @@ export function JmixDataController() {
                             dispatch(addTable({
                                 ...table,
                                 id: nodeId,
+                                name: tableName
                             } as any));
                         });
                     }
