@@ -40,7 +40,7 @@ const linkFieldSlice = createSlice({
         setLinkFieldSearchQuery: (state, action: PayloadAction<string>) => {
             state.searchQuery = action.payload;
         },
-        resetLinkFieldState: (state) => {
+        resetLinkFieldState: () => {
             return initialState;
         },
         initializeLinkFieldState: (state, action: PayloadAction<Partial<LinkFieldState>>) => {

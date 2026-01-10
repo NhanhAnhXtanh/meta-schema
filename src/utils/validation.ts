@@ -31,7 +31,7 @@ export class ValidationUtils {
      * Validates if a field name is reserved
      */
     static isReservedName(name: string): boolean {
-        return FIELD_CONSTRAINTS.RESERVED_NAMES.includes(name.toLowerCase());
+        return FIELD_CONSTRAINTS.RESERVED_NAMES.includes(name.toLowerCase() as any);
     }
 
     /**

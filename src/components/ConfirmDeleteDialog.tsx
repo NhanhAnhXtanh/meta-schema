@@ -14,7 +14,7 @@ import {
 
 export function ConfirmDeleteDialog() {
     const dispatch = useDispatch();
-    const { isOpen, nodeId, fieldIndex, fieldName } = useSelector((state: RootState) => state.ui.confirmDeleteDialog);
+    const { isOpen, nodeId, fieldIndex, fieldName } = useSelector((state: RootState) => state.ui.confirmDeleteDialog) || { isOpen: false, nodeId: null };
 
     const handleClose = () => {
         dispatch(closeConfirmDeleteDialog());

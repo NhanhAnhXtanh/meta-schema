@@ -1,13 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
+import { useState } from 'react';
 import { SchemaEvents } from '@/events/schemaEvents';
 import { schemaEventBus } from '@/events/eventBus';
-import { TableNodeData, TableColumn } from '@/types/schema';
+import { TableNodeData } from '@/types/schema';
 import { THEME } from '@/constants/theme';
-import { AppDispatch } from '@/store';
 
 export function useTableNode(id: string, data: TableNodeData) {
-    const dispatch = useDispatch<AppDispatch>();
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(data.label);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);

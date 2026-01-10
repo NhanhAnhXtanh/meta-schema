@@ -15,8 +15,6 @@ import { cn } from '@/lib/utils';
 import { THEME } from '@/constants/theme';
 import { useDispatch } from 'react-redux';
 import { confirmLinkField, confirmLinkObject, deleteField } from '@/store/slices/schemaSlice';
-import { SchemaEvents } from '@/events/schemaEvents';
-import { schemaEventBus } from '@/events/eventBus';
 
 export type RelationshipType = '1-1' | '1-n' | 'n-1';
 export type EdgePathType = 'bezier' | 'smoothstep' | 'straight';
@@ -49,7 +47,7 @@ export function RelationshipEdge({
   targetHandleId: targetHandle,
 }: EdgeProps<Edge<RelationshipEdgeData>>) {
 
-  const { updateEdge, getNode, deleteElements, getNodes } = useReactFlow();
+  const { updateEdge, getNode, getNodes } = useReactFlow();
   const dispatch = useDispatch();
   const nodes = getNodes() as Node<TableNodeData>[]; // Get latest nodes for dropdown
 
