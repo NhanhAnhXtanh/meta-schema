@@ -142,7 +142,7 @@ const schemaSlice = createSlice({
         },
         deleteTable: (state, action: PayloadAction<string>) => {
             const rootId = action.payload;
-            const idsToDelete = removeTableAndDescendants(state.nodes, state.edges, rootId);
+            const idsToDelete = removeTableAndDescendants(state.edges, rootId);
 
             // Apply deletions based on IDs identified by helper
             state.nodes = state.nodes.filter(n => !idsToDelete.has(n.id));

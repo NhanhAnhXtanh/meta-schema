@@ -19,6 +19,12 @@ interface UiState {
             linkType: '1-n' | 'n-1';
         };
     };
+    confirmDeleteDialog?: {
+        isOpen: boolean;
+        nodeId: string | null;
+        fieldIndex?: number;
+        fieldName?: string;
+    };
 }
 
 const initialState: UiState = {
@@ -27,6 +33,10 @@ const initialState: UiState = {
     linkFieldDialog: {
         isOpen: false,
         sourceNodeId: null
+    },
+    confirmDeleteDialog: {
+        isOpen: false,
+        nodeId: null
     }
 };
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, ComponentType } from 'react';
 import {
     ReactFlow,
     Background,
@@ -11,12 +11,13 @@ import {
     Connection,
     OnNodesDelete,
     Edge,
+    NodeProps,
 } from '@xyflow/react';
 import { CanvasVisualHandler } from '@/components/designer/canvas/CanvasVisualHandler';
 import '@xyflow/react/dist/style.css';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import { onNodesChange, onEdgesChange, onConnect } from '@/store/slices/schemaSlice';
+import { onNodesChange, onEdgesChange } from '@/store/slices/schemaSlice';
 import { TableNodeData } from '@/types/schema';
 import { TableNode } from '@/components/designer/canvas/nodes/TableNode';
 import { RelationshipEdge } from '@/components/RelationshipEdge';
@@ -25,7 +26,7 @@ import { SchemaEvents } from '@/events/schemaEvents';
 import { schemaEventBus } from '@/events/eventBus';
 
 const nodeTypes: NodeTypes = {
-    table: TableNode,
+    table: TableNode as unknown as ComponentType<NodeProps>,
 };
 
 const edgeTypes: EdgeTypes = {
@@ -89,7 +90,7 @@ export function FlowCanvas() {
     }, []);
 
     // Optimize: Connection Validation
-    const isValidConnection = useCallback((connection: Connection) => {
+    const isValidConnection = useCallback((connection: Edge | Connection) => {
         // Prevent self-connections
         return connection.source !== connection.target;
     }, []);

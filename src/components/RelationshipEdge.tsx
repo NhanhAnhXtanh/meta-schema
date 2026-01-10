@@ -1,7 +1,7 @@
 import { memo, useState, useEffect, useMemo } from 'react';
 import { EdgeProps, getBezierPath, useReactFlow, Position, getSmoothStepPath, Node, Edge } from '@xyflow/react';
 import { TableNodeData } from '@/types/schema';
-import { Button } from './ui/button';
+import { Button, buttonVariants } from './ui/button';
 import {
   Dialog,
   DialogContent,
@@ -544,27 +544,24 @@ export function RelationshipEdge({
       >
         <div className="flex items-center justify-center w-full h-full">
           <Dialog open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-            <DialogTrigger asChild>
-              <Button
-                size="icon"
-                variant="secondary"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsMenuOpen(true);
-                }}
-                className={cn(
-                  'h-10 w-10 rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer',
-                  'bg-white border-2 hover:scale-110'
-                )}
-                style={{
-                  borderColor: edgeColor,
-                }}
-              >
-                <MoreVertical
-                  size={20}
-                  style={{ color: edgeColor }}
-                />
-              </Button>
+            <DialogTrigger
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMenuOpen(true);
+              }}
+              className={cn(
+                buttonVariants({ variant: 'secondary', size: 'icon' }),
+                'rounded-full shadow-lg hover:shadow-xl transition-all cursor-pointer',
+                'bg-white border-2 hover:scale-110'
+              )}
+              style={{
+                borderColor: edgeColor,
+              }}
+            >
+              <MoreVertical
+                size={20}
+                style={{ color: edgeColor }}
+              />
             </DialogTrigger>
             <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden gap-0">
               <DialogHeader className="px-6 py-4 border-b bg-gray-50">

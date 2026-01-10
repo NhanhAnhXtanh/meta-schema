@@ -1,10 +1,10 @@
 import { memo } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps, Node } from '@xyflow/react';
 import { cn } from '@/lib/utils';
 import { Plus, Trash2 } from 'lucide-react';
 import { schemaEventBus } from '@/events/eventBus';
 import { SchemaEvents } from '@/events/schemaEvents';
-import { TableNodeData } from '@/types/schema';
+import { TableNodeData, TableColumn } from '@/types/schema';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import { useTableNode } from './useTableNode';
 import { TableNodeHeader } from './TableNodeHeader';
 import { TableNodeField } from './TableNodeField';
 
-function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
+function TableNodeComponent({ data, selected, id }: NodeProps<Node<TableNodeData>>) {
   const {
     isEditing, setIsEditing,
     editName, setEditName,
@@ -48,7 +48,7 @@ function TableNodeComponent({ data, selected, id }: NodeProps<TableNodeData>) {
         />
 
         <div className="divide-y nodrag">
-          {data.columns.map((column) => (
+          {data.columns.map((column: TableColumn) => (
             <TableNodeField key={column.name} column={column} />
           ))}
 

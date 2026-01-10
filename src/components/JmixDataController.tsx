@@ -213,24 +213,24 @@ export function JmixDataController() {
                             const jmixId = table.id;
                             let nodeId = table.id;
 
-                            // Check duplicate count to generate Replica ID
-                            if (processedIds[jmixId] === undefined) {
-                                processedIds[jmixId] = 0;
-                                // First instance: Keep ID simple (or add prefix if collision risk)
-                                // Let's use 'node_' prefix to be safe from internal collisions
-                                nodeId = `node_${jmixId}`;
-                            } else {
-                                processedIds[jmixId]++;
-                                // Subsequent instances: Mark as Replica
-                                nodeId = `node_${jmixId}_replica_${processedIds[jmixId]}`;
-                            }
-
-                            // Map Logic
                             if (jmixId) {
+                                // Check duplicate count to generate Replica ID
+                                if (processedIds[jmixId] === undefined) {
+                                    processedIds[jmixId] = 0;
+                                    // First instance: Keep ID simple (or add prefix if collision risk)
+                                    // Let's use 'node_' prefix to be safe from internal collisions
+                                    nodeId = `node_${jmixId}`;
+                                } else {
+                                    processedIds[jmixId]++;
+                                    // Subsequent instances: Mark as Replica
+                                    nodeId = `node_${jmixId}_replica_${processedIds[jmixId]}`;
+                                }
+
+                                // Map Logic
                                 if (!idMapRef.current[jmixId]) {
                                     idMapRef.current[jmixId] = [];
                                 }
-                                idMapRef.current[jmixId].push(nodeId);
+                                idMapRef.current[jmixId].push(nodeId!);
                             }
 
                             dispatch(addTable({
