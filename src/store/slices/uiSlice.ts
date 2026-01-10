@@ -93,13 +93,32 @@ const uiSlice = createSlice({
             state.linkFieldDialog.isEditMode = false;
             state.linkFieldDialog.initialValues = undefined;
         },
+
+        // Confirm Delete Dialog
+        openConfirmDeleteDialog: (state, action: PayloadAction<{ nodeId: string; fieldIndex: number; fieldName: string }>) => {
+            state.confirmDeleteDialog = {
+                isOpen: true,
+                nodeId: action.payload.nodeId,
+                fieldIndex: action.payload.fieldIndex,
+                fieldName: action.payload.fieldName
+            };
+        },
+        closeConfirmDeleteDialog: (state) => {
+            state.confirmDeleteDialog = {
+                isOpen: false,
+                nodeId: null,
+                fieldIndex: undefined,
+                fieldName: undefined
+            };
+        },
     },
 });
 
 export const {
     toggleSidebar,
     setAddTableDialogOpen,
-    openLinkFieldDialog, openEditLinkFieldDialog, openLinkFieldDialogWithValues, closeLinkFieldDialog
+    openLinkFieldDialog, openEditLinkFieldDialog, openLinkFieldDialogWithValues, closeLinkFieldDialog,
+    openConfirmDeleteDialog, closeConfirmDeleteDialog
 } = uiSlice.actions;
 
 export default uiSlice.reducer;

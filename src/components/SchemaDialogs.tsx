@@ -1,15 +1,17 @@
+
 import { useSelector } from 'react-redux';
 import { RootState } from '@/store';
-import { AddTableDialog } from './AddTableDialog';
 import { LinkFieldDialog } from './LinkFieldDialog';
+import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
 
 export function SchemaDialogs() {
     const linkFieldDialogIsOpen = useSelector((state: RootState) => state.ui.linkFieldDialog.isOpen);
+    const confirmDeleteDialogIsOpen = useSelector((state: RootState) => state.ui.confirmDeleteDialog?.isOpen);
 
     return (
         <>
-            <AddTableDialog />
             {linkFieldDialogIsOpen && <LinkFieldDialog />}
+            {confirmDeleteDialogIsOpen && <ConfirmDeleteDialog />}
         </>
     );
 }

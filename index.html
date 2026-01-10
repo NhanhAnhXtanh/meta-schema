@@ -1,13 +1,261 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ERD Diagram Builder</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ERD Diagram Builder</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+
+  <!-- Jmix Simulator Tool -->
+  <div id="jmix-sim"
+    style="position: fixed; top: 20px; right: 20px; width: 320px; max-height: 90vh; display: flex; flex-direction: column; background: #1e1e1e; color: #fff; padding: 20px; border-radius: 12px; font-family: system-ui; z-index: 99999; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #333;">
+    <h3
+      style="margin: 0 0 15px 0; font-size: 16px; display: flex; align-items: center; justify-content: space-between;">
+      <span>🚀 Jmix Control Panel</span>
+      <button onclick="document.getElementById('jmix-sim').style.display='none'"
+        style="background:none; border:none; color: #999; cursor: pointer;">✕</button>
+    </h3>
+
+    <div style="display: grid; gap: 10px; flex-shrink: 0;">
+      <button onclick="loadSchema('simple')"
+        style="padding: 10px; background: #3b82f6; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">📦
+        Load Simple (User-Order)</button>
+      <button onclick="loadSchema('complex')"
+        style="padding: 10px; background: #8b5cf6; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">🏢
+        Load Complex (CRM)</button>
+    </div>
+
+    <div style="height: 1px; background: #333; margin: 15px 0; flex-shrink: 0;"></div>
+
+    <div style="flex: 1; overflow-y: auto; min-height: 0;">
+      <h4 style="margin: 0 0 10px 0; font-size: 13px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px;">
+        Field Visibility Controls</h4>
+      <div id="field-controls" style="font-size: 12px;">
+        <em style="color: #666;">No schema loaded.</em>
+      </div>
+    </div>
+
+    <div style="height: 1px; background: #333; margin: 15px 0; flex-shrink: 0;"></div>
+
+    <div id="sim-log"
+      style="height: 80px; flex-shrink: 0; font-size: 11px; color: #999; overflow-y: auto; font-family: monospace; border-top: 1px solid #333; padding-top: 10px;">
+    </div>
+  </div>
+
+  <script>
+    // --- Data Definitions ---
+    const schemas = {
+      simple: {
+        autoLayout: true,
+        tables: [
+          {
+            id: 'tbl_user',
+            name: 'User',
+            tableName: 'sec_user',
+            position: { x: 0, y: 0 },
+            columns: [
+              { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+              { name: 'username', type: 'varchar', visible: true },
+              { name: 'password', type: 'varchar', visible: true },
+              { name: 'role', type: 'varchar', visible: true },
+              { name: 'orders', type: 'array', visible: true }
+            ]
+          },
+          {
+            id: 'tbl_order',
+            name: 'Order',
+            tableName: 'sales_order',
+            position: { x: 0, y: 0 },
+            columns: [
+              { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+              { name: 'order_no', type: 'varchar', visible: true },
+              { name: 'date', type: 'date', visible: true },
+              { name: 'amount', type: 'decimal', visible: true },
+              { name: 'user_id', type: 'uuid', isForeignKey: true, visible: true },
+              { name: 'user_ref', type: 'object', visible: true }
+            ]
+          },
+          {
+            id: 'tbl_user_replica',
+            name: 'User (Replica)',
+            tableName: 'sec_user',
+            position: { x: 0, y: 0 },
+            columns: [
+              { name: 'id', type: 'uuid', isPrimaryKey: true, visible: true },
+              { name: 'username', type: 'varchar', visible: true },
+              { name: 'password', type: 'varchar', visible: true },
+              { name: 'role', type: 'varchar', visible: true }
+            ]
+          }
+        ],
+        relationships: [
+          { type: 'array', relationshipType: '1-n', sourceNodeId: 'tbl_user', targetNodeId: 'tbl_order', sourceKey: 'id', targetKey: 'user_id', fieldName: 'orders' },
+          { type: 'object', relationshipType: 'n-1', sourceNodeId: 'tbl_order', targetNodeId: 'tbl_user_replica', sourceKey: 'user_id', targetKey: 'id', fieldName: 'user_ref' }
+        ]
+      },
+      complex: {
+        autoLayout: true,
+        tables: [
+          { id: 'crm_customer', name: 'Customer', tableName: 'crm_customer', position: { x: 0, y: 0 }, columns: [{ name: 'id', type: 'uuid', isPrimaryKey: true, visible: true }, { name: 'name', type: 'varchar', visible: true }, { name: 'email', type: 'varchar', visible: true }, { name: 'invoices', type: 'array', visible: true }] },
+          // Second Customer Instance (Same ID from Jmix)
+          { id: 'crm_customer', name: 'Customer (VIP)', tableName: 'crm_customer', position: { x: 0, y: 0 }, columns: [{ name: 'id', type: 'uuid', isPrimaryKey: true, visible: true }, { name: 'name', type: 'varchar', visible: true }, { name: 'email', type: 'varchar', visible: true }, { name: 'vip_product_ref', type: 'link', visible: true }] },
+
+          { id: 't_inv', name: 'Invoice', tableName: 'crm_invoice', position: { x: 0, y: 0 }, columns: [{ name: 'id', type: 'uuid', isPrimaryKey: true, visible: true }, { name: 'cust_id', type: 'uuid', isForeignKey: true, visible: true }, { name: 'total', type: 'decimal', visible: true }, { name: 'status', type: 'enum', visible: true }, { name: 'lines', type: 'array', visible: true }] },
+          { id: 't_line', name: 'Line', tableName: 'crm_invoice_line', position: { x: 0, y: 0 }, columns: [{ name: 'id', type: 'uuid', isPrimaryKey: true, visible: true }, { name: 'inv_id', type: 'uuid', isForeignKey: true, visible: true }, { name: 'qty', type: 'int', visible: true }] },
+          { id: 't_prod', name: 'Product', tableName: 'crm_product', position: { x: 0, y: 0 }, columns: [{ name: 'id', type: 'uuid', isPrimaryKey: true, visible: true }, { name: 'sku', type: 'varchar', visible: true }, { name: 'price', type: 'decimal', visible: true }, { name: 'lines_ref', type: 'array', visible: true }] }
+        ],
+        relationships: [
+          { type: 'array', relationshipType: '1-n', sourceNodeId: 'crm_customer', targetNodeId: 't_inv', sourceKey: 'id', targetKey: 'cust_id', fieldName: 'invoices' },
+          // Relationship for VIP Customer only (Index 1) - Test Object type
+          { type: 'object', relationshipType: '1-1', sourceNodeId: 'crm_customer', sourceReplicaIndex: 1, targetNodeId: 't_prod', sourceKey: 'id', targetKey: 'id', fieldName: 'vip_product_ref' },
+          { type: 'array', relationshipType: '1-n', sourceNodeId: 't_inv', targetNodeId: 't_line', sourceKey: 'id', targetKey: 'inv_id', fieldName: 'lines' },
+          { type: 'array', relationshipType: '1-n', sourceNodeId: 't_prod', targetNodeId: 't_line', sourceKey: 'id', targetKey: 'prod_id', fieldName: 'lines_ref' }
+        ]
+      }
+    };
+
+    const log = (msg) => {
+      const el = document.getElementById('sim-log');
+      el.innerHTML = `<div>> ${msg}</div>` + el.innerHTML;
+    };
+
+    const send = (event, data) => {
+      const message = {
+        type: 'SCHEMA_ACTION',
+        payload: { event, data }
+      };
+      window.postMessage(message, '*');
+      log(`Sent: ${event}`);
+    };
+
+    window.loadSchema = (type) => {
+      const schema = schemas[type];
+      if (!schema) return;
+
+      // 1. Send Bulk Load Event
+      send('schema:load', schema);
+
+      // 2. Render Checkbox Controls
+      renderControls(schema);
+    };
+
+    function renderControls(schema) {
+      const container = document.getElementById('field-controls');
+      container.innerHTML = '';
+
+      const idTracker = {}; // Track duplicate IDs
+
+      schema.tables.forEach(table => {
+        // Calculate Instance Index
+        const currentCount = idTracker[table.id] || 0;
+        const instanceIdx = currentCount;
+        idTracker[table.id] = currentCount + 1;
+
+        const tableDiv = document.createElement('div');
+        tableDiv.style.marginBottom = '15px';
+
+        const title = document.createElement('div');
+        // Add visual indicator for Replica Index if > 0
+        const replicaLabel = instanceIdx > 0 ? ` (Replica ${instanceIdx})` : '';
+        title.textContent = `${table.name} (${table.tableName})${replicaLabel}`;
+        title.style.fontWeight = 'bold';
+        title.style.marginBottom = '5px';
+        title.style.color = '#4ade80';
+        tableDiv.appendChild(title);
+
+        table.columns.forEach((col, idx) => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.alignItems = 'center';
+          row.style.marginBottom = '3px';
+          row.style.paddingLeft = '10px';
+
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.checked = col.visible !== false;
+          checkbox.style.marginRight = '8px';
+          checkbox.style.cursor = 'pointer';
+
+          // Event Handler
+          checkbox.onchange = (e) => {
+            const isVisible = e.target.checked;
+            send('field:toggle_visibility', {
+              nodeId: table.id,
+              fieldIndex: idx,
+              fieldName: col.name,
+              instanceIndex: instanceIdx // Send Index to target specific replica
+            });
+            log(`Toggle ${table.name}.${col.name} -> ${isVisible}`);
+          };
+
+          const label = document.createElement('span');
+          label.textContent = col.name;
+          label.style.color = '#ddd';
+
+          const actionsDiv = document.createElement('div');
+          actionsDiv.style.marginLeft = 'auto'; // Right align
+
+          // Only show actions for Virtual/Relationship fields
+          const isVirtual = col.type === 'array' || col.type === 'link' || col.type === 'object';
+
+          if (isVirtual) {
+            // Edit Button
+            const editBtn = document.createElement('button');
+            editBtn.textContent = '✏️';
+            editBtn.style.border = 'none';
+            editBtn.style.background = 'none';
+            editBtn.style.cursor = 'pointer';
+            editBtn.style.fontSize = '12px';
+            editBtn.style.marginLeft = '5px';
+            editBtn.title = 'Edit Field';
+            editBtn.onclick = () => {
+              send('field:request_edit', {
+                nodeId: table.id,
+                fieldIndex: idx,
+                fieldName: col.name,
+                instanceIndex: instanceIdx
+              });
+            };
+            actionsDiv.appendChild(editBtn);
+
+            // Delete Button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '🗑️';
+            deleteBtn.style.border = 'none';
+            deleteBtn.style.background = 'none';
+            deleteBtn.style.cursor = 'pointer';
+            deleteBtn.style.fontSize = '12px';
+            deleteBtn.style.marginLeft = '5px';
+            deleteBtn.title = 'Delete Field';
+            deleteBtn.onclick = () => {
+              console.log('Using React Dialog Flow for Delete');
+              // Send Request to React for Beautiful Confirmation Dialog
+              send('field:request_delete', {
+                nodeId: table.id,
+                fieldIndex: idx,
+                fieldName: col.name,
+                instanceIndex: instanceIdx
+              });
+            };
+            actionsDiv.appendChild(deleteBtn);
+          }
+
+          row.appendChild(checkbox);
+          row.appendChild(label);
+          row.appendChild(actionsDiv);
+          tableDiv.appendChild(row);
+        });
+
+        container.appendChild(tableDiv);
+      });
+    }
+  </script>
+</body>
+
 </html>

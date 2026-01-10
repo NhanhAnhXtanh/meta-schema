@@ -13,6 +13,8 @@ export const SchemaEvents = {
     FIELD_DELETE: 'field:delete',
     FIELD_REORDER: 'field:reorder',
     FIELD_TOGGLE_VISIBILITY: 'field:toggle_visibility',
+    FIELD_REQUEST_EDIT: 'field:request_edit',
+    FIELD_REQUEST_DELETE: 'field:request_delete', // Alias/Option for confirmed delete
 
     // Global Actions
     SCHEMA_AUTO_LAYOUT: 'schema:auto_layout',
@@ -25,7 +27,11 @@ export const SchemaEvents = {
 
 // Event Payload Interfaces
 export interface TableAddPayload {
+    id?: string;
     name: string;
+    tableName?: string;
+    columns: TableColumn[];
+    position?: { x: number; y: number };
 }
 
 export interface TableUpdatePayload {

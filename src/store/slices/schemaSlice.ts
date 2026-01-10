@@ -213,16 +213,29 @@ const schemaSlice = createSlice({
             if (!sourceNode || !targetNode) return;
 
             // Add new field to source node
-            const newField: TableColumn = {
+            // Check if field already exists
+            const existingFieldIndex = sourceNode.data.columns.findIndex(c => c.name === newFieldName);
+
+            const newFieldData: TableColumn = {
                 name: newFieldName,
-                type: 'array',
+                type: 'array', // Force type to match Link
                 visible: true,
                 isVirtual: true,
-                isPrimaryKey: false, // Fix: Virtual field is not PK
+                isPrimaryKey: false,
                 linkedPrimaryKeyField: sourcePK,
                 linkedForeignKeyField: targetFK,
             };
-            sourceNode.data.columns.push(newField);
+
+            if (existingFieldIndex !== -1) {
+                const existingField = sourceNode.data.columns[existingFieldIndex];
+                sourceNode.data.columns[existingFieldIndex] = {
+                    ...existingField,
+                    ...newFieldData,
+                    visible: existingField.visible
+                };
+            } else {
+                sourceNode.data.columns.push(newFieldData);
+            }
 
             // Clean up: Remove FK from source if it was previously an Object relationship
             const sourcePKColumn = sourceNode.data.columns.find(c => c.name === sourcePK);
@@ -368,7 +381,10 @@ const schemaSlice = createSlice({
             const targetNode = state.nodes.find(n => n.id === targetNodeId);
 
             if (sourceNode && targetNode) {
-                sourceNode.data.columns.push({
+                // Check if field already exists (e.g. from table definition)
+                const existingFieldIndex = sourceNode.data.columns.findIndex(c => c.name === newFieldName);
+
+                const newFieldData: TableColumn = {
                     name: newFieldName,
                     type: 'object',
                     visible: true,
@@ -379,7 +395,20 @@ const schemaSlice = createSlice({
                     primaryKeyField: targetPK, // Store generic PK ref
                     linkedForeignKeyField: sourceFK,
                     relationshipType: relationshipType || 'n-1'
-                });
+                };
+
+                if (existingFieldIndex !== -1) {
+                    // Update existing field to be a Link
+                    const existingField = sourceNode.data.columns[existingFieldIndex];
+                    sourceNode.data.columns[existingFieldIndex] = {
+                        ...existingField,
+                        ...newFieldData,
+                        visible: existingField.visible // Keep user visibility preference if any
+                    };
+                } else {
+                    // Create new virtual field
+                    sourceNode.data.columns.push(newFieldData);
+                }
 
                 // Clean up: Remove FK from target if it was previously an Array relationship
                 const targetPKColumn = targetNode.data.columns.find(c => c.name === targetPK);
