@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Database, Search, ArrowRight } from 'lucide-react';
+import { Database, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLinkFieldForm } from '@/hooks/useLinkFieldForm';
 
@@ -25,32 +25,24 @@ export function LinkFieldDialog() {
     isFormValid,
 
     // Form Values
-    targetType,
     selectedTargetNodeId,
-    selectedTemplateId,
     selectedSourceKey,
     selectedTargetKey,
     newFieldName,
     linkType,
-    searchQuery,
     selectedTargetName,
     availableTargetNodes,
-    filteredTemplates,
-    templates,
 
     // Handlers
     handleConfirm,
     handleCancel,
 
     // Setters
-    setLinkFieldSearchQuery,
-    setLinkFieldSelectedTemplateId,
     setLinkFieldNewFieldName,
     setLinkFieldLinkType,
     setLinkFieldSelectedTargetNodeId,
     setLinkFieldSelectedSourceKey,
     setLinkFieldSelectedTargetKey,
-    setSelectionAction
   } = useLinkFieldForm();
 
   if (!sourceNode) return null;
@@ -62,7 +54,7 @@ export function LinkFieldDialog() {
         "resize-y overflow-hidden min-h-[500px]",
         "max-w-5xl h-[80vh]"
       )} style={{ resize: 'both' }}>
-        {/* ... Header ... */}
+        {/* Header */}
         <DialogHeader className="p-4 border-b border-gray-100 shrink-0">
           <DialogTitle>{isEditMode ? 'Chỉnh Sửa Trường Link' : 'Thêm Trường Link Mới'}</DialogTitle>
           <DialogDescription className="text-gray-500">
@@ -71,18 +63,17 @@ export function LinkFieldDialog() {
         </DialogHeader>
 
         <div className="flex flex-1 min-h-0">
-          {/* Right Panel: Content */}
+          {/* Content */}
           <div className="flex-1 flex flex-col bg-white min-w-0">
             <div className="flex-1 min-h-0 flex flex-col relative">
               {selectedTargetName ? (
                 <>
-                  {/* Header and Preview (Assumed unchanged) */}
+                  {/* Header */}
                   <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between shrink-0 bg-white z-10">
                     <div className="flex items-center gap-2">
                       <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold uppercase tracking-wide">Selected</span>
                       <h3 className="font-bold text-gray-900 text-lg">{selectedTargetName}</h3>
                     </div>
-                    {/* ... */}
                   </div>
 
                   <div className="flex-1 min-h-0 bg-gray-50 relative group">
@@ -122,19 +113,15 @@ export function LinkFieldDialog() {
                           </div>
                         </div>
 
-                        {/* CONNECTION LINES (Center Column) */}
+                        {/* CONNECTION LINES (Center) */}
                         <div className="relative w-full h-full pointer-events-none">
                           <svg className="absolute top-0 left-0 w-full h-full overflow-visible">
                             <defs>
-                              <marker id="arrowhead-start" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                                <circle cx="3" cy="3" r="2" fill="#3b82f6" />
-                              </marker>
                               <marker id="arrowhead-end" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
                                 <circle cx="3" cy="3" r="2" fill="#3b82f6" />
                               </marker>
                             </defs>
                             {(() => {
-                              // Find indices
                               const sIndex = sourceFields.findIndex(f => f.name === selectedSourceKey);
                               const tIndex = targetFields.findIndex(f => f.name === selectedTargetKey);
 
@@ -147,18 +134,15 @@ export function LinkFieldDialog() {
                               const y2 = TOP_OFFSET + (tIndex * ROW_HEIGHT) + (ROW_HEIGHT / 2);
 
                               return (
-                                <>
-                                  {/* Connection Line */}
-                                  <path
-                                    d={`M 0 ${y1} C 50 ${y1}, 50 ${y2}, 100 ${y2}`}
-                                    fill="none"
-                                    stroke="#3b82f6"
-                                    strokeWidth="2"
-                                    strokeDasharray="4"
-                                    className="animate-pulse"
-                                    markerEnd="url(#arrowhead-end)"
-                                  />
-                                </>
+                                <path
+                                  d={`M 0 ${y1} C 50 ${y1}, 50 ${y2}, 100 ${y2}`}
+                                  fill="none"
+                                  stroke="#3b82f6"
+                                  strokeWidth="2"
+                                  strokeDasharray="4"
+                                  className="animate-pulse"
+                                  markerEnd="url(#arrowhead-end)"
+                                />
                               );
                             })()}
                           </svg>
@@ -167,7 +151,7 @@ export function LinkFieldDialog() {
                         {/* TARGET TABLE */}
                         <div className="space-y-3 z-10 w-full min-w-0">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide", targetType === 'existing' ? "bg-green-100 text-green-700" : "bg-purple-100 text-purple-700")}>Target ({targetType})</span>
+                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">Target</span>
                             <h4 className="font-bold text-gray-900 text-sm truncate">{selectedTargetName}</h4>
                           </div>
                           <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden ring-1 ring-gray-900/5">
@@ -212,7 +196,7 @@ export function LinkFieldDialog() {
                   </div>
                 </>
               ) : (
-                // ... Empty State ...
+                // Empty State
                 <div className="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3">
                   <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center">
                     <Database className="w-8 h-8 opacity-20" />
@@ -224,14 +208,13 @@ export function LinkFieldDialog() {
               )}
             </div>
 
-            {/* Configuration Form - Always Visible */}
+            {/* Configuration Form */}
             <div className="p-6 border-t border-gray-100 bg-white shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)] z-20">
               <h4 className="text-xs font-bold text-gray-900 uppercase tracking-widest mb-4">Cấu hình liên kết</h4>
               <div className="grid grid-cols-12 gap-6">
 
-                {/* Link Type Controls (Only in CREATE Mode, as Edit Mode has Sidebar) */}
+                {/* Link Type */}
                 <div className="col-span-12 grid grid-cols-2 gap-6 pb-4 border-b border-gray-50 mb-2">
-                  {/* Data Type */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-semibold text-gray-500 uppercase block">Kiểu Dữ Liệu</label>
                     <div className="flex gap-2">
@@ -243,7 +226,6 @@ export function LinkFieldDialog() {
                       </button>
                     </div>
                   </div>
-                  {/* Relation */}
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-semibold text-gray-500 uppercase block">Quan hệ</label>
                     <div className="flex gap-2">
@@ -256,16 +238,12 @@ export function LinkFieldDialog() {
                   </div>
                 </div>
 
+                {/* Target Table Dropdown (Simplified) */}
                 <div className="col-span-12 space-y-1.5">
                   <label className="text-[10px] font-semibold text-gray-500 uppercase block">Target Table</label>
                   <select
-                    value={targetType === 'existing' ? (selectedTargetNodeId || "") : ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val) {
-                        setSelectionAction({ type: 'existing', id: val });
-                      }
-                    }}
+                    value={selectedTargetNodeId || ""}
+                    onChange={(e) => setLinkFieldSelectedTargetNodeId(e.target.value)}
                     className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm"
                   >
                     <option value="">-- Chọn bảng đích --</option>
@@ -277,7 +255,7 @@ export function LinkFieldDialog() {
                   </select>
                 </div>
 
-                {/* Keys */}
+                {/* Keys Selection */}
                 <div className="col-span-8 grid grid-cols-[1fr,auto,1fr] gap-4 items-center">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-semibold text-gray-500 uppercase flex justify-between">
@@ -287,8 +265,7 @@ export function LinkFieldDialog() {
                     <select
                       value={selectedSourceKey}
                       onChange={(e) => setLinkFieldSelectedSourceKey(e.target.value)}
-                      disabled={targetType === 'existing' && !isEditMode}
-                      className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm"
                     >
                       <option value="">-- Chọn khóa --</option>
                       {sourceFields.map((field) => (
@@ -311,8 +288,7 @@ export function LinkFieldDialog() {
                     <select
                       value={selectedTargetKey}
                       onChange={(e) => setLinkFieldSelectedTargetKey(e.target.value)}
-                      disabled={targetType === 'existing' && !isEditMode}
-                      className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
+                      className="w-full h-9 rounded-md border-gray-300 bg-white text-sm focus:ring-2 focus:ring-blue-500 hover:border-blue-300 transition-colors shadow-sm"
                     >
                       <option value="">-- Chọn khóa --</option>
                       {targetFields.map((field) => (
@@ -331,18 +307,10 @@ export function LinkFieldDialog() {
                     value={newFieldName}
                     onChange={(e) => setLinkFieldNewFieldName(e.target.value)}
                     placeholder="e.g. suppliers"
-                    disabled={targetType === 'existing' && !isEditMode}
-                    className="h-9 bg-white border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:text-gray-500"
+                    className="h-9 bg-white border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
-              {/* Info helper */}
-              {targetType === 'existing' && !isEditMode && (
-                <div className="mt-3 bg-blue-50 p-3 rounded text-[11px] text-blue-700 flex gap-2">
-                  <span className="font-bold">Info:</span>
-                  <span>Select keys below to create a link to this existing table.</span>
-                </div>
-              )}
 
               {/* Validation Error */}
               {validationError && (
@@ -352,14 +320,13 @@ export function LinkFieldDialog() {
                 </div>
               )}
             </div>
-
           </div>
         </div>
 
         {/* Footer */}
         <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50 shrink-0">
           <Button variant="ghost" onClick={handleCancel} className="text-gray-500 hover:text-gray-900 border border-transparent hover:bg-white hover:border-gray-200 transition-all font-medium">
-            {targetType === 'existing' && !isEditMode ? 'Đóng' : 'Hủy bỏ'}
+            Hủy bỏ
           </Button>
 
           <Button
@@ -370,7 +337,7 @@ export function LinkFieldDialog() {
               isFormValid ? "bg-blue-600 hover:bg-blue-700 hover:shadow-blue-500/30 text-white" : "bg-gray-200 text-gray-400 cursor-not-allowed"
             )}
           >
-            {targetType === 'template' ? 'Tạo Bản Sao & Link' : (isEditMode ? 'Lưu Thay Đổi' : 'Tạo Liên Kết')}
+            {isEditMode ? 'Lưu Thay Đổi' : 'Tạo Liên Kết'}
           </Button>
         </div>
       </DialogContent>

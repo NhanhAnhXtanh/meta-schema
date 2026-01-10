@@ -1,9 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 interface LinkFieldState {
-    targetType: 'existing' | 'template';
     selectedTargetNodeId: string;
-    selectedTemplateId: string;
     selectedSourceKey: string;
     selectedTargetKey: string;
     newFieldName: string;
@@ -12,9 +10,7 @@ interface LinkFieldState {
 }
 
 const initialState: LinkFieldState = {
-    targetType: 'template',
     selectedTargetNodeId: '',
-    selectedTemplateId: '',
     selectedSourceKey: '',
     selectedTargetKey: '',
     newFieldName: '',
@@ -26,14 +22,8 @@ const linkFieldSlice = createSlice({
     name: 'linkField',
     initialState,
     reducers: {
-        setLinkFieldTargetType: (state, action: PayloadAction<'existing' | 'template'>) => {
-            state.targetType = action.payload;
-        },
         setLinkFieldSelectedTargetNodeId: (state, action: PayloadAction<string>) => {
             state.selectedTargetNodeId = action.payload;
-        },
-        setLinkFieldSelectedTemplateId: (state, action: PayloadAction<string>) => {
-            state.selectedTemplateId = action.payload;
         },
         setLinkFieldSelectedSourceKey: (state, action: PayloadAction<string>) => {
             state.selectedSourceKey = action.payload;
@@ -50,20 +40,17 @@ const linkFieldSlice = createSlice({
         setLinkFieldSearchQuery: (state, action: PayloadAction<string>) => {
             state.searchQuery = action.payload;
         },
-        resetLinkFieldState: (state) => { // Keep initial values if needed or reset to default
+        resetLinkFieldState: (state) => {
             return initialState;
         },
         initializeLinkFieldState: (state, action: PayloadAction<Partial<LinkFieldState>>) => {
             return { ...state, ...action.payload };
         }
-
     },
 });
 
 export const {
-    setLinkFieldTargetType,
     setLinkFieldSelectedTargetNodeId,
-    setLinkFieldSelectedTemplateId,
     setLinkFieldSelectedSourceKey,
     setLinkFieldSelectedTargetKey,
     setLinkFieldNewFieldName,
