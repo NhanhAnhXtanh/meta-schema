@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import { THEME } from '@/constants/theme';
 import { useDispatch } from 'react-redux';
 import { confirmLinkField, confirmLinkObject, deleteField } from '@/store/slices/schemaSlice';
+import { schemaEventBus } from '@/events/eventBus';
+import { SchemaEvents } from '@/events/schemaEvents';
 
 export type RelationshipType = '1-1' | '1-n' | 'n-1';
 export type EdgePathType = 'bezier' | 'smoothstep' | 'straight';
@@ -546,6 +548,27 @@ export function RelationshipEdge({
               onClick={(e) => {
                 e.stopPropagation();
                 setIsMenuOpen(true);
+
+                // Notify External Listeners (e.g. Jmix Sidebar) using a dedicated event
+                // This avoids triggering the internal Edit Dialog (FIELD_REQUEST_EDIT)
+                const sourceNode = getNode(source) as Node<TableNodeData> | undefined;
+
+                console.log('[RelationshipEdge] Clicked edge button. Source:', source, 'Handle:', sourceHandle);
+
+                if (sourceNode && sourceHandle) {
+                  const fieldIndex = sourceNode.data.columns.findIndex((c) => c.name === sourceHandle);
+                  console.log('[RelationshipEdge] Found index:', fieldIndex);
+
+                  if (fieldIndex !== -1) {
+                    console.log('[RelationshipEdge] Emitting RELATIONSHIP_SELECTED');
+                    schemaEventBus.emit(SchemaEvents.RELATIONSHIP_SELECTED as any, {
+                      nodeId: source,
+                      fieldIndex,
+                      targetNodeId: target,
+                      targetKey: targetHandle
+                    });
+                  }
+                }
               }}
               className={cn(
                 buttonVariants({ variant: 'secondary', size: 'icon' }),

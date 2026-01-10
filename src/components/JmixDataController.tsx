@@ -140,6 +140,10 @@ export function JmixDataController() {
             dispatch(openLinkFieldDialog(payload.sourceNodeId));
         };
 
+        const handleRelationshipSelected = (payload: any) => {
+            console.log('[JmixDataController] Received RELATIONSHIP_SELECTED:', payload);
+        };
+
         // ... (existing handlers)
 
         const handleFieldRequestDelete = (payload: { nodeId: string; fieldIndex: number; fieldName?: string }) => {
@@ -186,6 +190,7 @@ export function JmixDataController() {
         schemaEventBus.on(SchemaEvents.SCHEMA_AUTO_LAYOUT, handleAutoLayout);
         schemaEventBus.on(SchemaEvents.RELATIONSHIP_ADD, handleRelationshipAdd);
         schemaEventBus.on(SchemaEvents.LINK_FIELD_OPEN, handleLinkFieldOpen);
+        schemaEventBus.on(SchemaEvents.RELATIONSHIP_SELECTED as any, handleRelationshipSelected);
 
 
         // --- External Message Listener (Jmix Integration) ---
@@ -350,7 +355,9 @@ export function JmixDataController() {
             schemaEventBus.off(SchemaEvents.SCHEMA_REDO, handleRedo);
             schemaEventBus.off(SchemaEvents.SCHEMA_AUTO_LAYOUT, handleAutoLayout);
             schemaEventBus.off(SchemaEvents.RELATIONSHIP_ADD, handleRelationshipAdd);
+            schemaEventBus.off(SchemaEvents.RELATIONSHIP_ADD, handleRelationshipAdd);
             schemaEventBus.off(SchemaEvents.LINK_FIELD_OPEN, handleLinkFieldOpen);
+            schemaEventBus.off(SchemaEvents.RELATIONSHIP_SELECTED as any, handleRelationshipSelected);
 
             window.removeEventListener('message', handleWindowMessage);
         };

@@ -23,6 +23,7 @@ export const SchemaEvents = {
     RELATIONSHIP_ADD: 'relationship:add',
     LINK_FIELD_OPEN: 'link_field:open',
     TABLE_TOGGLE_VISIBILITY: 'table:toggle_visibility',
+    RELATIONSHIP_SELECTED: 'relationship:selected',
 } as const;
 
 // Event Payload Interfaces
